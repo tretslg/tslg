@@ -3,47 +3,13 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>The Siegel Law Group, P.A. | Training Hub</title>
+    <title>TNT Growth | Command Center</title>
     <meta http-equiv="Cache-Control" content="no-cache, no-store, must-revalidate">
     <meta http-equiv="Pragma" content="no-cache">
     <meta http-equiv="Expires" content="0">
     <script src="https://cdn.tailwindcss.com"></script>
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet">
     <script src="https://unpkg.com/lucide@latest"></script>
-    <!-- Firebase SDK -->
-    <script type="module">
-        // Import the functions you need from the SDKs you need
-        import { initializeApp } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-app.js";
-        import { getAnalytics } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-analytics.js";
-        import { getFirestore, doc, setDoc, getDoc, collection, addDoc, updateDoc, deleteDoc } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-firestore.js";
-        import { getStorage, ref, uploadBytes, getDownloadURL } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-storage.js";
-
-        // Your web app's Firebase configuration
-        const firebaseConfig = {
-            apiKey: "AIzaSyDx5qmoBIK5NURZLrTKUyL0ujlVDD-aLyU",
-            authDomain: "siegel-law-group-training.firebaseapp.com",
-            projectId: "siegel-law-group-training",
-            storageBucket: "siegel-law-group-training.firebasestorage.app",
-            messagingSenderId: "352509909326",
-            appId: "1:352509909326:web:287c47c2dcdf6b0714a61f",
-            measurementId: "G-K6E49W7HP6"
-        };
-
-        // Initialize Firebase
-        const app = initializeApp(firebaseConfig);
-        const analytics = getAnalytics(app);
-        const db = getFirestore(app);
-        const storage = getStorage(app);
-
-        // Make Firebase available globally
-        window.firebaseApp = app;
-        window.firebaseDb = db;
-        window.firebaseStorage = storage;
-        window.firebaseAnalytics = analytics;
-        
-        // Dispatch event when Firebase is ready
-        window.dispatchEvent(new Event('firebase-ready'));
-    </script>
     <style>
         :root {
             --tnt-dark-blue: #0f1b4c;
@@ -70,7 +36,7 @@
         <aside id="sidebar" class="w-64 bg-white border-r border-[var(--tnt-border-gray)] flex flex-col">
             <div class="p-6 text-center border-b border-[var(--tnt-border-gray)]">
                 <div class="w-16 h-16 bg-gradient-to-br from-sky-500 to-pink-500 rounded-xl flex items-center justify-center shadow-lg mx-auto">
-                    <span class="text-white font-bold text-xl">TSLG</span>
+                    <span class="text-white font-bold text-xl">TNT</span>
                 </div>
             </div>
             <div class="p-4">
@@ -102,7 +68,7 @@
     <div id="login-modal" class="modal-overlay hidden fixed inset-0 flex items-center justify-center p-4">
         <div class="bg-white rounded-lg shadow-xl w-full max-w-md p-6">
             <div class="flex justify-between items-center mb-6">
-                <h2 class="text-2xl font-bold text-slate-900">Login to The Siegel Law Group Academy</h2>
+                <h2 class="text-2xl font-bold text-slate-900">Login to TNT Academy</h2>
                 <button class="close-modal-btn text-slate-400 hover:text-slate-600" data-modal-id="login-modal">
                     <span data-lucide="x" class="w-6 h-6"></span>
                 </button>
@@ -157,15 +123,9 @@
                         <label for="resource-department" class="block text-sm font-medium text-slate-700 mb-1">Department *</label>
                         <select id="resource-department" required class="w-full p-3 border border-slate-300 rounded-md focus:ring-2 focus:ring-[var(--tnt-pink)] focus:border-transparent">
                             <option value="">Select Department</option>
-                            <option value="Estate Planning">Estate Planning</option>
-                            <option value="Elder Law">Elder Law</option>
-                            <option value="Medicaid Planning">Medicaid Planning</option>
-                            <option value="Trust Administration">Trust Administration</option>
-                            <option value="Probate">Probate</option>
-                            <option value="Marketing">Marketing</option>
-                            <option value="Sales">Sales</option>
-                            <option value="Operations">Operations</option>
-                            <option value="Human Resources">Human Resources</option>
+                            <option value="Analytics">Analytics</option>
+                            <option value="Creative">Creative</option>
+                            <option value="Growth">Growth</option>
                         </select>
                     </div>
                     <div>
@@ -237,15 +197,9 @@
                         <label for="member-department" class="block text-sm font-medium text-slate-700 mb-1">Department *</label>
                         <select id="member-department" required class="w-full p-3 border border-slate-300 rounded-md focus:ring-2 focus:ring-[var(--tnt-pink)] focus:border-transparent">
                             <option value="">Select Department</option>
-                            <option value="Estate Planning">Estate Planning</option>
-                            <option value="Elder Law">Elder Law</option>
-                            <option value="Medicaid Planning">Medicaid Planning</option>
-                            <option value="Trust Administration">Trust Administration</option>
-                            <option value="Probate">Probate</option>
-                            <option value="Marketing">Marketing</option>
-                            <option value="Sales">Sales</option>
-                            <option value="Operations">Operations</option>
-                            <option value="Human Resources">Human Resources</option>
+                            <option value="Analytics">Analytics</option>
+                            <option value="Creative">Creative</option>
+                            <option value="Growth">Growth</option>
                         </select>
                     </div>
                 </div>
@@ -300,15 +254,9 @@
                         <label for="edit-member-department" class="block text-sm font-medium text-slate-700 mb-1">Department *</label>
                         <select id="edit-member-department" required class="w-full p-3 border border-slate-300 rounded-md focus:ring-2 focus:ring-[var(--tnt-pink)] focus:border-transparent">
                             <option value="">Select Department</option>
-                            <option value="Estate Planning">Estate Planning</option>
-                            <option value="Elder Law">Elder Law</option>
-                            <option value="Medicaid Planning">Medicaid Planning</option>
-                            <option value="Trust Administration">Trust Administration</option>
-                            <option value="Probate">Probate</option>
-                            <option value="Marketing">Marketing</option>
-                            <option value="Sales">Sales</option>
-                            <option value="Operations">Operations</option>
-                            <option value="Human Resources">Human Resources</option>
+                            <option value="Analytics">Analytics</option>
+                            <option value="Creative">Creative</option>
+                            <option value="Growth">Growth</option>
                         </select>
                     </div>
                 </div>
@@ -375,15 +323,9 @@
                         <label for="curriculum-department" class="block text-sm font-medium text-slate-700 mb-1">Department *</label>
                         <select id="curriculum-department" required class="w-full p-3 border border-slate-300 rounded-md focus:ring-2 focus:ring-[var(--tnt-pink)] focus:border-transparent">
                             <option value="">Select Department</option>
-                            <option value="Estate Planning">Estate Planning</option>
-                            <option value="Elder Law">Elder Law</option>
-                            <option value="Medicaid Planning">Medicaid Planning</option>
-                            <option value="Trust Administration">Trust Administration</option>
-                            <option value="Probate">Probate</option>
-                            <option value="Marketing">Marketing</option>
-                            <option value="Sales">Sales</option>
-                            <option value="Operations">Operations</option>
-                            <option value="Human Resources">Human Resources</option>
+                            <option value="Analytics">Analytics</option>
+                            <option value="Creative">Creative</option>
+                            <option value="Growth">Growth</option>
                         </select>
                     </div>
                     <div>
@@ -434,17 +376,17 @@
     <script>
         document.addEventListener('DOMContentLoaded', () => {
             // =================================================================================
-            // FIREBASE FIRESTORE DATABASE (Production-Ready)
-            // This saves data to Firebase Firestore database
+            // DATABASE SIMULATION (Firebase-Ready)
+            // In a real app, this object would be replaced with calls to a Firestore database.
             // =================================================================================
             const db = {
                 // --- USERS COLLECTION ---
                 users: {
                     'creator_001': {
                         id: 'creator_001',
-                        name: 'Barry D. Siegel, Esq.',
-                        title: 'Founder and CEO',
-                        email: 'barry@siegellawgroup.com',
+                        name: 'Tre Forte',
+                        title: 'Chief Marketing Strategist & Sales Manager',
+                        email: 'tre@tntgrowth.com',
                         avatar: 'https://i.ibb.co/2S8p5z3/avatar.png',
                         department: 'All',
                         role: 'creator',
@@ -457,227 +399,107 @@
                     },
                     'user_001': {
                         id: 'user_001',
-                        name: 'Tre Forte',
-                        title: 'Chief Marketing Officer',
-                        email: 'tre@siegellawgroup.com',
+                        name: 'Adam Treboutat',
+                        title: 'CEO & Founder',
+                        email: 'adam@tntgrowth.com',
                         avatar: 'https://i.ibb.co/2S8p5z3/avatar.png',
-                        department: 'Marketing',
+                        department: 'Growth',
                         role: 'admin',
                         accessLevel: 'admin',
                         completedItems: [],
                         pinnedItems: [],
-                        pathProgress: { 'onboarding_marketing': 0 },
+                        pathProgress: { 'onboarding_growth': 0 },
                         lastLogin: '2024-01-15',
                         status: 'active',
                         joinDate: '2023-06-01'
                     },
                     'user_002': {
                         id: 'user_002',
-                        name: 'Abby L. Steinberg',
-                        title: 'Attorney',
-                        email: 'abby@siegellawgroup.com',
+                        name: 'Tim Walton',
+                        title: 'Head of Growth',
+                        email: 'tim@tntgrowth.com',
                         avatar: 'https://i.ibb.co/2S8p5z3/avatar.png',
-                        department: 'Estate Planning',
+                        department: 'Growth',
                         role: 'user',
                         accessLevel: 'standard',
                         completedItems: [],
                         pinnedItems: [],
-                        pathProgress: { 'onboarding_estate_planning': 0 },
+                        pathProgress: { 'onboarding_growth': 0 },
                         lastLogin: '2024-01-14',
                         status: 'active',
                         joinDate: '2024-01-05'
                     },
                     'user_003': {
                         id: 'user_003',
-                        name: 'Jay Silverstein',
-                        title: 'Attorney',
-                        email: 'jay@siegellawgroup.com',
+                        name: 'Billy Herrera-Arcia',
+                        title: 'Head of Analytics',
+                        email: 'billy@tntgrowth.com',
                         avatar: 'https://i.ibb.co/2S8p5z3/avatar.png',
-                        department: 'Estate Planning',
+                        department: 'Analytics',
                         role: 'user',
                         accessLevel: 'standard',
                         completedItems: [],
                         pinnedItems: [],
-                        pathProgress: { 'onboarding_estate_planning': 0 },
+                        pathProgress: { 'onboarding_analytics': 0 },
                         lastLogin: '2024-01-13',
                         status: 'active',
                         joinDate: '2024-01-10'
                     },
                     'user_004': {
                         id: 'user_004',
-                        name: 'Maria Siegel',
-                        title: 'Medicaid Consultant & Community Outreach Specialist',
-                        email: 'maria@siegellawgroup.com',
+                        name: 'Bruna Silva',
+                        title: 'Team Member',
+                        email: 'bruna@tntgrowth.com',
                         avatar: 'https://i.ibb.co/2S8p5z3/avatar.png',
-                        department: 'Medicaid Planning',
+                        department: 'Growth',
                         role: 'user',
                         accessLevel: 'standard',
                         completedItems: [],
                         pinnedItems: [],
-                        pathProgress: { 'onboarding_medicaid_planning': 0 },
+                        pathProgress: { 'onboarding_growth': 0 },
                         lastLogin: '2024-01-12',
                         status: 'active',
                         joinDate: '2024-01-08'
-                    },
-                    'user_005': {
-                        id: 'user_005',
-                        name: 'Jodean Gary',
-                        title: 'Sales Manager',
-                        email: 'jodean@siegellawgroup.com',
-                        avatar: 'https://i.ibb.co/2S8p5z3/avatar.png',
-                        department: 'Sales',
-                        role: 'user',
-                        accessLevel: 'standard',
-                        completedItems: [],
-                        pinnedItems: [],
-                        pathProgress: { 'onboarding_sales': 0 },
-                        lastLogin: '2024-01-11',
-                        status: 'active',
-                        joinDate: '2024-01-07'
-                    },
-                    'user_006': {
-                        id: 'user_006',
-                        name: 'Lennice Padilla',
-                        title: 'Estate Planning Consultant',
-                        email: 'lennice@siegellawgroup.com',
-                        avatar: 'https://i.ibb.co/2S8p5z3/avatar.png',
-                        department: 'Estate Planning',
-                        role: 'user',
-                        accessLevel: 'standard',
-                        completedItems: [],
-                        pinnedItems: [],
-                        pathProgress: { 'onboarding_estate_planning': 0 },
-                        lastLogin: '2024-01-10',
-                        status: 'active',
-                        joinDate: '2024-01-06'
-                    },
-                    'user_007': {
-                        id: 'user_007',
-                        name: 'Odileinis Gibson',
-                        title: 'Director of Operations',
-                        email: 'odileinis@siegellawgroup.com',
-                        avatar: 'https://i.ibb.co/2S8p5z3/avatar.png',
-                        department: 'Operations',
-                        role: 'user',
-                        accessLevel: 'standard',
-                        completedItems: [],
-                        pinnedItems: [],
-                        pathProgress: { 'onboarding_operations': 0 },
-                        lastLogin: '2024-01-09',
-                        status: 'active',
-                        joinDate: '2024-01-05'
-                    },
-                    'user_008': {
-                        id: 'user_008',
-                        name: 'Sarah Rivera',
-                        title: 'Executive Assistant',
-                        email: 'sarah@siegellawgroup.com',
-                        avatar: 'https://i.ibb.co/2S8p5z3/avatar.png',
-                        department: 'Operations',
-                        role: 'user',
-                        accessLevel: 'standard',
-                        completedItems: [],
-                        pinnedItems: [],
-                        pathProgress: { 'onboarding_operations': 0 },
-                        lastLogin: '2024-01-08',
-                        status: 'active',
-                        joinDate: '2024-01-04'
-                    },
-                    'user_009': {
-                        id: 'user_009',
-                        name: 'Julie Jordan',
-                        title: 'Human Resources Manager',
-                        email: 'julie@siegellawgroup.com',
-                        avatar: 'https://i.ibb.co/2S8p5z3/avatar.png',
-                        department: 'Human Resources',
-                        role: 'user',
-                        accessLevel: 'standard',
-                        completedItems: [],
-                        pinnedItems: [],
-                        pathProgress: { 'onboarding_human_resources': 0 },
-                        lastLogin: '2024-01-07',
-                        status: 'active',
-                        joinDate: '2024-01-03'
                     }
                 },
                 // --- CREDENTIALS COLLECTION (Backend Storage) ---
                 credentials: {
-                    'barry@siegellawgroup.com': {
-                        email: 'barry@siegellawgroup.com',
-                        passwordHash: 'hashed_siegel', // In real app, this would be bcrypt hash
-                        salt: 'salt_barry',
-                        lastPasswordChange: '2024-01-01',
-                        failedAttempts: 0,
-                        lockedUntil: null
-                    },
-                    'tre@siegellawgroup.com': {
-                        email: 'tre@siegellawgroup.com',
-                        passwordHash: 'hashed_siegel', // In real app, this would be bcrypt hash
+                    'tre@tntgrowth.com': {
+                        email: 'tre@tntgrowth.com',
+                        passwordHash: 'hashed_tnt123', // In real app, this would be bcrypt hash
                         salt: 'salt_tre',
                         lastPasswordChange: '2024-01-01',
                         failedAttempts: 0,
                         lockedUntil: null
                     },
-                    'abby@siegellawgroup.com': {
-                        email: 'abby@siegellawgroup.com',
-                        passwordHash: 'hashed_siegel',
-                        salt: 'salt_abby',
+                    'adam@tntgrowth.com': {
+                        email: 'adam@tntgrowth.com',
+                        passwordHash: 'hashed_tnt123',
+                        salt: 'salt_adam',
                         lastPasswordChange: '2024-01-01',
                         failedAttempts: 0,
                         lockedUntil: null
                     },
-                    'jay@siegellawgroup.com': {
-                        email: 'jay@siegellawgroup.com',
-                        passwordHash: 'hashed_siegel',
-                        salt: 'salt_jay',
+                    'tim@tntgrowth.com': {
+                        email: 'tim@tntgrowth.com',
+                        passwordHash: 'hashed_tnt123',
+                        salt: 'salt_tim',
                         lastPasswordChange: '2024-01-01',
                         failedAttempts: 0,
                         lockedUntil: null
                     },
-                    'maria@siegellawgroup.com': {
-                        email: 'maria@siegellawgroup.com',
-                        passwordHash: 'hashed_siegel',
-                        salt: 'salt_maria',
+                    'billy@tntgrowth.com': {
+                        email: 'billy@tntgrowth.com',
+                        passwordHash: 'hashed_tnt123',
+                        salt: 'salt_billy',
                         lastPasswordChange: '2024-01-01',
                         failedAttempts: 0,
                         lockedUntil: null
                     },
-                    'jodean@siegellawgroup.com': {
-                        email: 'jodean@siegellawgroup.com',
-                        passwordHash: 'hashed_siegel',
-                        salt: 'salt_jodean',
-                        lastPasswordChange: '2024-01-01',
-                        failedAttempts: 0,
-                        lockedUntil: null
-                    },
-                    'lennice@siegellawgroup.com': {
-                        email: 'lennice@siegellawgroup.com',
-                        passwordHash: 'hashed_siegel',
-                        salt: 'salt_lennice',
-                        lastPasswordChange: '2024-01-01',
-                        failedAttempts: 0,
-                        lockedUntil: null
-                    },
-                    'odileinis@siegellawgroup.com': {
-                        email: 'odileinis@siegellawgroup.com',
-                        passwordHash: 'hashed_siegel',
-                        salt: 'salt_odileinis',
-                        lastPasswordChange: '2024-01-01',
-                        failedAttempts: 0,
-                        lockedUntil: null
-                    },
-                    'sarah@siegellawgroup.com': {
-                        email: 'sarah@siegellawgroup.com',
-                        passwordHash: 'hashed_siegel',
-                        salt: 'salt_sarah',
-                        lastPasswordChange: '2024-01-01',
-                        failedAttempts: 0,
-                        lockedUntil: null
-                    },
-                    'julie@siegellawgroup.com': {
-                        email: 'julie@siegellawgroup.com',
-                        passwordHash: 'hashed_siegel',
-                        salt: 'salt_julie',
+                    'bruna@tntgrowth.com': {
+                        email: 'bruna@tntgrowth.com',
+                        passwordHash: 'hashed_tnt123',
+                        salt: 'salt_bruna',
                         lastPasswordChange: '2024-01-01',
                         failedAttempts: 0,
                         lockedUntil: null
@@ -685,141 +507,49 @@
                 },
                 // --- ITEMS COLLECTION (Resources) ---
                 items: {
-                    1: { id: 1, department: "Estate Planning", type: "Vision", title: "The Siegel Law Group Vision for Estate Planning", url: "#", description: "Strategic vision document for estate planning services.", author: "David Siegel", lastUpdated: "2024-04-19", skills: ['Estate Planning', 'Strategy'], ratings: [5, 5, 4], comments: [{ user: 'user_123', text: 'Great overview!', date: '2025-08-01' }] },
-                    3: { id: 3, department: "Estate Planning", type: "Training", title: "Estate Planning Client Intake Process", url: "https://www.loom.com/share/1bdea97546084986b2b9e15f28e8c0f0", description: "Step-by-step guide for estate planning client intake.", author: "David Siegel", lastUpdated: "2023-01-20", skills: ['Client Intake', 'Estate Planning'], ratings: [5, 4], comments: [] },
-                    4: { id: 4, department: "Elder Law", type: "Training", title: "Medicaid Planning Best Practices", url: "https://www.youtube.com/watch?v=dQw4w9WgXcQ", description: "How to effectively plan for Medicaid eligibility.", author: "Jennifer Martinez", lastUpdated: "2025-08-01", skills: ['Medicaid Planning', 'Elder Law'], ratings: [5, 5, 5, 4], comments: [] },
-                    5: { id: 5, department: "Trust Administration", type: "SOP", title: "SOP: Trust Administration Process", url: "#", description: "Standard operating procedure for trust administration.", author: "Amanda Rodriguez", lastUpdated: "2024-10-21", skills: ['Trust Administration', 'Fiduciary Duties'], ratings: [4], comments: [] },
-                    6: { id: 6, department: "Probate", type: "Template", title: "Probate Court Document Templates", url: "#", description: "Template for probate court documents.", author: "Robert Chen", lastUpdated: "2024-07-03", skills: ['Probate', 'Court Documents'], ratings: [5, 5], comments: [] },
+                    1: { id: 1, department: "Analytics", type: "Vision", title: "A-Team and TNT Vision for Business Growth", url: "#", description: "Strategic vision document for business growth.", author: "Billy Herrera-Arcia", lastUpdated: "2024-04-19", skills: ['Strategy', 'Company Culture'], ratings: [5, 5, 4], comments: [{ user: 'user_123', text: 'Great overview!', date: '2025-08-01' }] },
+                    3: { id: 3, department: "Analytics", type: "Training", title: "Adding New Campaigns to Funnel.io", url: "https://www.loom.com/share/1bdea97546084986b2b9e15f28e8c0f0", description: "Step-by-step guide for adding campaigns.", author: "Adam Treboutat", lastUpdated: "2023-01-20", skills: ['Funnel.io', 'Campaign Setup'], ratings: [5, 4], comments: [] },
+                    4: { id: 4, department: "Growth", type: "Training", title: "Mastering Google Ads Conversions", url: "https://www.youtube.com/watch?v=dQw4w9WgXcQ", description: "How to add new conversion tracking in Google Ads.", author: "Billy Herrera-Arcia", lastUpdated: "2025-08-01", skills: ['Google Ads', 'Conversion Tracking'], ratings: [5, 5, 5, 4], comments: [] },
+                    5: { id: 5, department: "Growth", type: "SOP", title: "SOP: Client Pacing Dashboard", url: "#", description: "Standard operating procedure for the client pacing dashboard.", author: "Billy Herrera-Arcia", lastUpdated: "2024-10-21", skills: ['Client Reporting', 'Pacing'], ratings: [4], comments: [] },
+                    6: { id: 6, department: "Creative", type: "Template", title: "Creative Roadmap Template", url: "#", description: "Template for creating creative roadmaps.", author: "Adam Treboutat", lastUpdated: "2024-07-03", skills: ['Creative Strategy', 'Planning'], ratings: [5, 5], comments: [] },
                 },
                 // --- LEARNING PATHS COLLECTION ---
                 paths: {
-                    'path_1': { id: 'path_1', title: 'New Estate Planning Attorney Onboarding', description: 'Essential training for all new estate planning attorneys.', department: 'Estate Planning', itemIds: [1, 3] },
-                    'path_2': { id: 'path_2', title: 'Advanced Elder Law Tactics', description: 'Level up your elder law and Medicaid planning skills.', department: 'Elder Law', itemIds: [4] }
+                    'path_1': { id: 'path_1', title: 'New Analyst Onboarding', description: 'Essential training for all new analytics team members.', department: 'Analytics', itemIds: [1, 3, 5] },
+                    'path_2': { id: 'path_2', title: 'Advanced Growth Tactics', description: 'Level up your campaign management skills.', department: 'Growth', itemIds: [4] }
                 },
                 // --- ONBOARDING PATHS COLLECTION ---
                 onboarding: {
-                    'onboarding_estate_planning': {
-                        id: 'onboarding_estate_planning',
-                        title: 'Estate Planning Department Onboarding',
-                        description: 'Complete onboarding for new Estate Planning team members',
-                        department: 'Estate Planning',
+                    'onboarding_analytics': {
+                        id: 'onboarding_analytics',
+                        title: 'Analytics Department Onboarding',
+                        description: 'Complete onboarding for new Analytics team members',
+                        department: 'Analytics',
                         itemIds: [1, 3],
                         required: true,
                         estimatedTime: '2 hours'
                     },
-                    'onboarding_elder_law': {
-                        id: 'onboarding_elder_law',
-                        title: 'Elder Law Department Onboarding',
-                        description: 'Complete onboarding for new Elder Law team members',
-                        department: 'Elder Law',
-                        itemIds: [4],
+                    'onboarding_growth': {
+                        id: 'onboarding_growth',
+                        title: 'Growth Department Onboarding',
+                        description: 'Complete onboarding for new Growth team members',
+                        department: 'Growth',
+                        itemIds: [4, 5],
                         required: true,
                         estimatedTime: '3 hours'
                     },
-                    'onboarding_medicaid_planning': {
-                        id: 'onboarding_medicaid_planning',
-                        title: 'Medicaid Planning Department Onboarding',
-                        description: 'Complete onboarding for new Medicaid Planning team members',
-                        department: 'Medicaid Planning',
-                        itemIds: [4],
-                        required: true,
-                        estimatedTime: '2 hours'
-                    },
-                    'onboarding_trust_administration': {
-                        id: 'onboarding_trust_administration',
-                        title: 'Trust Administration Department Onboarding',
-                        description: 'Complete onboarding for new Trust Administration team members',
-                        department: 'Trust Administration',
-                        itemIds: [5],
-                        required: true,
-                        estimatedTime: '2 hours'
-                    },
-                    'onboarding_probate': {
-                        id: 'onboarding_probate',
-                        title: 'Probate Department Onboarding',
-                        description: 'Complete onboarding for new Probate team members',
-                        department: 'Probate',
+                    'onboarding_creative': {
+                        id: 'onboarding_creative',
+                        title: 'Creative Department Onboarding',
+                        description: 'Complete onboarding for new Creative team members',
+                        department: 'Creative',
                         itemIds: [6],
-                        required: true,
-                        estimatedTime: '1 hour'
-                    },
-                    'onboarding_marketing': {
-                        id: 'onboarding_marketing',
-                        title: 'Marketing Department Onboarding',
-                        description: 'Complete onboarding for new Marketing team members',
-                        department: 'Marketing',
-                        itemIds: [1],
                         required: true,
                         estimatedTime: '1 hour'
                     }
                 }
             };
 
-            // =================================================================================
-            // FIREBASE FIRESTORE FUNCTIONS
-            // =================================================================================
-            async function saveToFirebase(collection, data) {
-                try {
-                    const { setDoc, doc } = await import('https://www.gstatic.com/firebasejs/10.7.1/firebase-firestore.js');
-                    const firestoreDb = window.firebaseDb;
-                    await setDoc(doc(firestoreDb, collection, 'main'), data);
-                } catch (error) {
-                    console.error('Error saving to Firebase:', error);
-                    // Fallback to localStorage
-                    localStorage.setItem(`siegelLawGroup_${collection}`, JSON.stringify(data));
-                }
-            }
-            
-            async function loadFromFirebase(collection) {
-                try {
-                    const { getDoc, doc } = await import('https://www.gstatic.com/firebasejs/10.7.1/firebase-firestore.js');
-                    const firestoreDb = window.firebaseDb;
-                    const docRef = doc(firestoreDb, collection, 'main');
-                    const docSnap = await getDoc(docRef);
-                    
-                    if (docSnap.exists()) {
-                        return docSnap.data();
-                    } else {
-                        // If no data in Firebase, try localStorage as fallback
-                        const saved = localStorage.getItem(`siegelLawGroup_${collection}`);
-                        return saved ? JSON.parse(saved) : {};
-                    }
-                } catch (error) {
-                    console.error('Error loading from Firebase:', error);
-                    // Fallback to localStorage
-                    const saved = localStorage.getItem(`siegelLawGroup_${collection}`);
-                    return saved ? JSON.parse(saved) : {};
-                }
-            }
-            
-            // Load data on startup
-            async function initializeData() {
-                try {
-                    const savedUsers = await loadFromFirebase('users');
-                    const savedCredentials = await loadFromFirebase('credentials');
-                    const savedItems = await loadFromFirebase('items');
-                    const savedPaths = await loadFromFirebase('paths');
-                    const savedOnboarding = await loadFromFirebase('onboarding');
-                    
-                    // Merge saved data with default data
-                    Object.assign(db.users, savedUsers);
-                    Object.assign(db.credentials, savedCredentials);
-                    Object.assign(db.items, savedItems);
-                    Object.assign(db.paths, savedPaths);
-                    Object.assign(db.onboarding, savedOnboarding);
-                } catch (error) {
-                    console.error('Error initializing data:', error);
-                }
-            }
-            
-            // Initialize data when Firebase is ready
-            if (window.firebaseDb) {
-                initializeData();
-            } else {
-                // Wait for Firebase to load
-                window.addEventListener('firebase-ready', initializeData);
-            }
-            
             // =================================================================================
             // STATE MANAGEMENT
             // =================================================================================
@@ -922,7 +652,7 @@
                     container.innerHTML = `
                         <div class="flex items-center justify-center h-full">
                             <div class="text-center">
-                                <h1 class="text-3xl font-bold text-slate-900 mb-4">Welcome to The Siegel Law Group Academy</h1>
+                                <h1 class="text-3xl font-bold text-slate-900 mb-4">Welcome to TNT Academy</h1>
                                 <p class="text-slate-600 mb-8">Please login to access your training resources and track your progress.</p>
                                 <button id="login-prompt-btn" class="bg-[var(--tnt-pink)] text-white px-6 py-3 rounded-lg font-medium hover:bg-[#d6005b] transition-colors">
                                     Login to Continue
@@ -1619,7 +1349,6 @@
                         if (db.onboarding[onboardingKey]) {
                             if (!db.onboarding[onboardingKey].itemIds.includes(itemId)) {
                                 db.onboarding[onboardingKey].itemIds.push(itemId);
-                                await saveToFirebase('onboarding', db.onboarding);
                                 render();
                                 showNotification(`Added "${item.title}" to ${department} onboarding!`, 'success');
                             } else {
@@ -1640,7 +1369,6 @@
                             const index = db.onboarding[onboardingKey].itemIds.indexOf(itemId);
                             if (index > -1) {
                                 db.onboarding[onboardingKey].itemIds.splice(index, 1);
-                                await saveToFirebase('onboarding', db.onboarding);
                                 render();
                                 showNotification('Step removed from curriculum!', 'success');
                             }
@@ -1747,7 +1475,7 @@
                 const credentials = db.credentials[email];
                 const user = Object.values(db.users).find(u => u.email === email);
                 
-                if (user && credentials && password === 'siegel') { // In real app, verify against passwordHash
+                if (user && credentials && password === 'tnt123') { // In real app, verify against passwordHash
                     // Update last login
                     user.lastLogin = new Date().toISOString().split('T')[0];
                     
@@ -1757,7 +1485,7 @@
                     render();
                     showNotification('Login successful!', 'success');
                 } else {
-                    showNotification('Invalid credentials. Try: [email]@siegellawgroup.com / siegel', 'error');
+                    showNotification('Invalid credentials. Try: tre@tntgrowth.com / tnt123', 'error');
                 }
             }
             
@@ -1788,9 +1516,6 @@
                 
                 // Add to database
                 db.items[newResource.id] = newResource;
-                
-                // Save to Firebase
-                await saveToFirebase('items', db.items);
                 
                 // Reset form and close modal
                 e.target.reset();
@@ -1844,10 +1569,6 @@
                 db.users[newUserId] = newUser;
                 db.credentials[email] = newCredentials;
                 
-                // Save to Firebase
-                await saveToFirebase('users', db.users);
-                await saveToFirebase('credentials', db.credentials);
-                
                 // Reset form and close modal
                 e.target.reset();
                 hideModal('add-member-modal');
@@ -1884,10 +1605,6 @@
                     delete db.credentials[oldEmail];
                 }
                 
-                // Save to Firebase
-                await saveToFirebase('users', db.users);
-                await saveToFirebase('credentials', db.credentials);
-                
                 // Reset form and close modal
                 e.target.reset();
                 hideModal('edit-member-modal');
@@ -1914,9 +1631,6 @@
                 
                 // Add to database
                 db.items[newStep.id] = newStep;
-                
-                // Save to Firebase
-                await saveToFirebase('items', db.items);
                 
                 // Reset form and close modal
                 e.target.reset();
