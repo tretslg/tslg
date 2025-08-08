@@ -400,12 +400,26 @@
                     </select>
                 </div>
                 <div>
-                    <label for="edit-member-avatar" class="block text-sm font-medium text-slate-700 mb-1">Profile Picture</label>
+                    <label class="block text-sm font-medium text-slate-700 mb-1">Profile Picture</label>
                     <div class="flex items-center space-x-4">
                         <img id="edit-member-avatar-preview" src="https://i.ibb.co/2S8p5z3/avatar.png" alt="Profile" class="w-16 h-16 rounded-full object-cover border-2 border-slate-200">
-                        <div class="flex-1">
-                            <input type="file" id="edit-member-avatar" accept="image/*" class="w-full p-3 border border-slate-300 rounded-md focus:ring-2 focus:ring-[var(--tnt-pink)] focus:border-transparent">
-                            <p class="text-xs text-slate-500 mt-1">Upload a profile picture (JPG, PNG, GIF)</p>
+                        <div class="flex-1 space-y-3">
+                            <!-- Upload from device -->
+                            <div>
+                                <label for="edit-member-avatar" class="block text-xs font-medium text-slate-600 mb-1">Upload from device:</label>
+                                <input type="file" id="edit-member-avatar" accept="image/*" class="w-full p-2 border border-slate-300 rounded-md focus:ring-2 focus:ring-[var(--tnt-pink)] focus:border-transparent text-sm">
+                                <p class="text-xs text-slate-500 mt-1">JPG, PNG, GIF (max 5MB)</p>
+                            </div>
+                            
+                            <!-- Or select from media library -->
+                            <div>
+                                <label class="block text-xs font-medium text-slate-600 mb-1">Or select from Media Library:</label>
+                                <button type="button" id="select-avatar-from-media" class="w-full p-2 border border-slate-300 rounded-md hover:bg-slate-50 focus:ring-2 focus:ring-[var(--tnt-pink)] focus:border-transparent text-sm flex items-center justify-center">
+                                    <span data-lucide="image" class="w-4 h-4 mr-2"></span>
+                                    Choose from Media Library
+                                </button>
+                                <p class="text-xs text-slate-500 mt-1">Select from previously uploaded images</p>
+                            </div>
                         </div>
                     </div>
                 </div>
@@ -484,6 +498,44 @@
                     <button type="submit" class="bg-[var(--tnt-pink)] text-white px-6 py-2 rounded-md font-medium hover:bg-[#d6005b] transition-colors">Add Step</button>
                 </div>
             </form>
+        </div>
+    </div>
+
+    <!-- Select Avatar from Media Library Modal -->
+    <div id="select-avatar-modal" class="modal-overlay hidden fixed inset-0 flex items-center justify-center p-4">
+        <div class="bg-white rounded-lg shadow-xl w-full max-w-4xl p-6 max-h-[90vh] overflow-y-auto">
+            <div class="flex justify-between items-center mb-6">
+                <h2 class="text-2xl font-bold text-slate-900">Select Profile Picture from Media Library</h2>
+                <button class="close-modal-btn text-slate-400 hover:text-slate-600" data-modal-id="select-avatar-modal">
+                    <span data-lucide="x" class="w-6 h-6"></span>
+                </button>
+            </div>
+            <div class="space-y-4">
+                <!-- Search and filter -->
+                <div class="flex space-x-4">
+                    <div class="flex-1">
+                        <input type="text" id="avatar-search" placeholder="Search images..." class="w-full p-3 border border-slate-300 rounded-md focus:ring-2 focus:ring-[var(--tnt-pink)] focus:border-transparent">
+                    </div>
+                    <select id="avatar-filter" class="p-3 border border-slate-300 rounded-md focus:ring-2 focus:ring-[var(--tnt-pink)] focus:border-transparent">
+                        <option value="">All Images</option>
+                        <option value="image/jpeg">JPEG</option>
+                        <option value="image/png">PNG</option>
+                        <option value="image/gif">GIF</option>
+                    </select>
+                </div>
+                
+                <!-- Media grid -->
+                <div id="avatar-media-grid" class="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-4">
+                    <!-- Media items will be populated here -->
+                </div>
+                
+                <!-- No results message -->
+                <div id="avatar-no-results" class="hidden text-center py-8 text-slate-500">
+                    <span data-lucide="image" class="w-12 h-12 mx-auto mb-4 text-slate-300"></span>
+                    <p>No images found in Media Library</p>
+                    <p class="text-sm">Upload some images to the Media Library first</p>
+                </div>
+            </div>
         </div>
     </div>
 
@@ -1196,6 +1248,101 @@
                     checkExistingLogin();
                 }
             }, 3000);
+            
+            // Render avatar media library for selection
+            function renderAvatarMediaLibrary() {
+                const mediaGrid = document.getElementById('avatar-media-grid');
+                const noResults = document.getElementById('avatar-no-results');
+                const searchInput = document.getElementById('avatar-search');
+                const filterSelect = document.getElementById('avatar-filter');
+                
+                if (!db.mediaLibrary) {
+                    db.mediaLibrary = {};
+                }
+                
+                // Get all image media
+                let imageMedia = Object.values(db.mediaLibrary).filter(media => 
+                    media.type === 'image' || 
+                    media.url.match(/\.(jpg|jpeg|png|gif|webp)$/i) ||
+                    media.url.startsWith('data:image/')
+                );
+                
+                // Apply search filter
+                const searchTerm = searchInput ? searchInput.value.toLowerCase() : '';
+                if (searchTerm) {
+                    imageMedia = imageMedia.filter(media => 
+                        media.title.toLowerCase().includes(searchTerm) ||
+                        media.description.toLowerCase().includes(searchTerm)
+                    );
+                }
+                
+                // Apply type filter
+                const filterType = filterSelect ? filterSelect.value : '';
+                if (filterType) {
+                    imageMedia = imageMedia.filter(media => {
+                        if (media.url.startsWith('data:')) {
+                            return media.url.startsWith(filterType);
+                        }
+                        return media.url.toLowerCase().includes(filterType.split('/')[1]);
+                    });
+                }
+                
+                if (imageMedia.length === 0) {
+                    mediaGrid.innerHTML = '';
+                    noResults.classList.remove('hidden');
+                    return;
+                }
+                
+                noResults.classList.add('hidden');
+                mediaGrid.innerHTML = imageMedia.map(media => `
+                    <div class="bg-white border border-slate-200 rounded-lg p-3 hover:border-[var(--tnt-pink)] cursor-pointer transition-colors" 
+                         data-media-id="${media.id}" 
+                         data-media-url="${media.url}"
+                         data-media-title="${media.title}">
+                        <div class="aspect-square bg-slate-100 rounded-lg overflow-hidden mb-2">
+                            <img src="${media.url}" alt="${media.title}" class="w-full h-full object-cover">
+                        </div>
+                        <div class="text-xs">
+                            <div class="font-medium text-slate-900 truncate">${media.title}</div>
+                            <div class="text-slate-500 text-xs">${media.type}</div>
+                        </div>
+                    </div>
+                `).join('');
+                
+                // Add click handlers
+                mediaGrid.querySelectorAll('[data-media-id]').forEach(item => {
+                    item.addEventListener('click', function() {
+                        const mediaId = this.dataset.mediaId;
+                        const mediaUrl = this.dataset.mediaUrl;
+                        const mediaTitle = this.dataset.mediaTitle;
+                        
+                        // Update the avatar preview
+                        const avatarPreview = document.getElementById('edit-member-avatar-preview');
+                        if (avatarPreview) {
+                            avatarPreview.src = mediaUrl;
+                        }
+                        
+                        // Store selected media for form submission
+                        window.selectedAvatarMedia = {
+                            id: mediaId,
+                            url: mediaUrl,
+                            title: mediaTitle
+                        };
+                        
+                        // Clear the file input
+                        const fileInput = document.getElementById('edit-member-avatar');
+                        if (fileInput) {
+                            fileInput.value = '';
+                        }
+                        
+                        // Close modal
+                        hideModal('select-avatar-modal');
+                        showNotification(`Selected "${mediaTitle}" as profile picture`, 'success');
+                    });
+                });
+                
+                lucide.createIcons();
+            }
             
             // Recovery function for lost media library data
             window.recoverMediaLibrary = function() {
@@ -2992,6 +3139,31 @@
                     });
                 }
                 
+                // Select avatar from media library button
+                const selectAvatarFromMediaBtn = document.getElementById('select-avatar-from-media');
+                if (selectAvatarFromMediaBtn) {
+                    selectAvatarFromMediaBtn.addEventListener('click', function() {
+                        renderAvatarMediaLibrary();
+                        showModal('select-avatar-modal');
+                    });
+                }
+                
+                // Avatar media library search and filter
+                const avatarSearch = document.getElementById('avatar-search');
+                const avatarFilter = document.getElementById('avatar-filter');
+                
+                if (avatarSearch) {
+                    avatarSearch.addEventListener('input', function() {
+                        renderAvatarMediaLibrary();
+                    });
+                }
+                
+                if (avatarFilter) {
+                    avatarFilter.addEventListener('change', function() {
+                        renderAvatarMediaLibrary();
+                    });
+                }
+                
                 // Cancel upload button
                 const cancelUploadBtn = document.getElementById('cancel-upload-btn');
                 if (cancelUploadBtn) {
@@ -3271,12 +3443,16 @@
                     return;
                 }
                 
-                // Handle profile picture upload
+                // Handle profile picture upload or media library selection
                 const avatarFile = document.getElementById('edit-member-avatar').files[0];
+                const selectedAvatarMedia = window.selectedAvatarMedia;
+                
                 if (avatarFile) {
+                    // Handle file upload
                     try {
                         const avatarUrl = await uploadFile(avatarFile, 'avatars');
                         member.avatar = avatarUrl;
+                        console.log('Profile picture uploaded successfully');
                     } catch (error) {
                         console.log('Firebase upload failed, trying base64 fallback...');
                         // Fallback to base64 for images
@@ -3295,6 +3471,12 @@
                             return;
                         }
                     }
+                } else if (selectedAvatarMedia) {
+                    // Handle media library selection
+                    member.avatar = selectedAvatarMedia.url;
+                    console.log('Profile picture selected from media library:', selectedAvatarMedia.title);
+                    // Clear the selected media
+                    window.selectedAvatarMedia = null;
                 }
                 
                 // Update member data
