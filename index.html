@@ -2478,6 +2478,7 @@
                             <h4 class="font-medium text-sm text-slate-900 line-clamp-2 mb-1">${media.title}</h4>
                             <p class="text-xs text-slate-500">${media.type.toUpperCase()}</p>
                             <p class="text-xs text-slate-400">${media.department || 'General'}</p>
+                            <a href="#" class="delete-media-link inline-block mt-2 text-xs text-red-600 hover:text-red-800 hover:underline" data-media-id="${media.id}">Delete</a>
                         </div>
                     </div>
                 `;
@@ -3084,8 +3085,32 @@
                     }
                 });
                 
-                // Delete media from library (capture phase so we run first; trash icon click always caught)
+                // Delete media: (1) visible "Delete" link under each card - always works
                 document.addEventListener('click', async (e) => {
+                    const link = e.target.closest('a.delete-media-link');
+                    if (link) {
+                        e.preventDefault();
+                        const mediaId = link.getAttribute('data-media-id');
+                        if (!mediaId) return;
+                        const media = db.mediaLibrary && (db.mediaLibrary[mediaId] || db.mediaLibrary[Number(mediaId)]);
+                        if (!media) {
+                            showNotification('Media item not found.', 'error');
+                            return;
+                        }
+                        const title = (media.title || '').replace(/"/g, '');
+                        if (!confirm(`Delete "${title}" from the Media Library? This cannot be undone.`)) return;
+                        delete db.mediaLibrary[media.id];
+                        try {
+                            await saveToFirebase('mediaLibrary', db.mediaLibrary);
+                            render();
+                            showNotification(`"${title}" removed from Media Library.`, 'success');
+                        } catch (err) {
+                            console.error('Error deleting media:', err);
+                            showNotification('Failed to save. Please try again.', 'error');
+                        }
+                        return;
+                    }
+                    // (2) overlay trash button
                     const deleteMediaBtn = e.target.closest('.delete-media-btn');
                     if (deleteMediaBtn) {
                         e.preventDefault();
