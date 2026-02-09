@@ -2468,7 +2468,7 @@
                                 <button class="bg-white/20 hover:bg-white/30 text-white p-2 rounded-full" title="Copy URL" onclick="copyMediaUrl('${media.url}')">
                                     <span data-lucide="copy" class="w-4 h-4"></span>
                                 </button>
-                                <button type="button" class="delete-media-btn bg-red-500/80 hover:bg-red-600/80 text-white p-2 rounded-full" title="Delete" onclick="handleDeleteMedia(${media.id})">
+                                <button type="button" class="delete-media-btn bg-red-500/80 hover:bg-red-600/80 text-white p-2 rounded-full" title="Delete" data-media-id="${media.id}" style="pointer-events:auto;cursor:pointer" onclick="if(typeof window.handleDeleteMedia==='function'){window.handleDeleteMedia(this.getAttribute('data-media-id'));}else{alert('Delete not available. Deploy the latest app-ui.html (firebase deploy --only hosting) and hard-refresh the page.');} return false;">
                                     <span data-lucide="trash-2" class="w-4 h-4"></span>
                                 </button>
                             </div>
