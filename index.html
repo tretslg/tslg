@@ -136,7 +136,7 @@
     <div id="login-modal" class="modal-overlay hidden fixed inset-0 flex items-center justify-center p-4">
         <div class="bg-white rounded-lg shadow-xl w-full max-w-md p-6">
             <div class="flex justify-between items-center mb-6">
-                <h2 class="text-2xl font-bold text-slate-900">Login to The Siegel Law Group Academy</h2>
+                <h2 id="login-modal-title" class="text-2xl font-bold text-slate-900">Login to The Siegel Law Group Academy</h2>
                 <button class="close-modal-btn text-slate-400 hover:text-slate-600" data-modal-id="login-modal">
                     <span data-lucide="x" class="w-6 h-6"></span>
                 </button>
@@ -690,14 +690,14 @@
             </div>
             <div id="crm-builder-ai-output" class="hidden mb-4 p-4 bg-slate-50 rounded-lg border text-sm"></div>
             <div id="crm-builder-suggestions-list" class="mb-4 space-y-2"></div>
-            <div class="border-t pt-4 mb-4">
-                <label class="block text-sm font-medium text-slate-700 mb-2">Add custom resource</label>
-                <div class="flex gap-2">
-                    <input type="text" id="crm-builder-custom-title" placeholder="Title" class="flex-1 p-2 border border-slate-300 rounded-md text-sm">
-                    <input type="text" id="crm-builder-custom-url" placeholder="URL" class="flex-1 p-2 border border-slate-300 rounded-md text-sm">
-                    <button type="button" id="crm-builder-add-custom" class="px-3 py-2 bg-slate-100 hover:bg-slate-200 rounded-md text-sm">Add</button>
-                </div>
-            </div>
+                            <div class="border-t pt-4 mb-4">
+                                <label class="block text-sm font-medium text-slate-700 mb-2">Add custom resource (with optional SOP)</label>
+                                <input type="text" id="crm-builder-custom-title" placeholder="Title" class="w-full p-2 border border-slate-300 rounded-md text-sm mb-2">
+                                <input type="text" id="crm-builder-custom-desc" placeholder="Description (optional)" class="w-full p-2 border border-slate-300 rounded-md text-sm mb-2">
+                                <input type="text" id="crm-builder-custom-url" placeholder="URL or video link" class="w-full p-2 border border-slate-300 rounded-md text-sm mb-2">
+                                <textarea id="crm-builder-custom-steps" placeholder="SOP steps, one per line (optional)" class="w-full p-2 border border-slate-300 rounded-md text-sm mb-2" rows="3"></textarea>
+                                <button type="button" id="crm-builder-add-custom" class="px-3 py-2 bg-slate-100 hover:bg-slate-200 rounded-md text-sm">Add</button>
+                            </div>
             <h3 class="text-sm font-semibold text-slate-700 mb-2">Curriculum items</h3>
             <ul id="crm-builder-items-list" class="space-y-2 mb-4 min-h-[60px]"></ul>
             <div class="flex justify-end gap-2">
@@ -1105,9 +1105,26 @@
                 },
                 // --- CRM CURRICULA by department (Intake, Sales, Attorneys, etc.) ---
                 crmCurricula: {},
-                // --- PLATFORM SETTINGS (admin-configured, e.g. which CRM the company uses) ---
-                settings: { platformCrm: null }
+                // --- PLATFORM SETTINGS (admin-configured) ---
+                settings: {
+                    platformCrm: null,
+                    companyName: '',
+                    practiceArea: '',
+                    showIndustryUpdates: true,
+                    specialistStyle: 'detailed',
+                    welcomeLine: ''
+                }
             };
+
+            // Practice areas for Industry Updates and AI personalization
+            const PRACTICE_AREAS = [
+                { id: 'estate_elder', name: 'Estate Planning & Elder Law' },
+                { id: 'estate_planning', name: 'Estate Planning' },
+                { id: 'elder_law', name: 'Elder Law' },
+                { id: 'medicaid', name: 'Medicaid Planning' },
+                { id: 'trust_probate', name: 'Trust & Probate' },
+                { id: 'general_legal', name: 'General Law Practice' }
+            ];
 
             // Departments that can have CRM curricula (for "curriculums by department")
             const CRM_DEPARTMENTS = [
@@ -1248,6 +1265,49 @@
                     return '';
                 }
             }
+
+            function getCompanyName() {
+                return (db.settings && db.settings.companyName) ? db.settings.companyName.trim() : 'The Siegel Law Group Academy';
+            }
+
+            function getPracticeAreaLabel() {
+                const id = (db.settings && db.settings.practiceArea) || '';
+                if (!id) return 'Estate Planning, Elder Law, and impact on our practice.';
+                const area = PRACTICE_AREAS.find(a => a.id === id);
+                return area ? `${area.name} and impact on our practice.` : 'Relevant updates for our practice.';
+            }
+
+            function getPracticeAreaForPrompt() {
+                const id = (db.settings && db.settings.practiceArea) || '';
+                if (!id) return 'Estate Planning and Elder Law';
+                const area = PRACTICE_AREAS.find(a => a.id === id);
+                return area ? area.name : 'Estate Planning and Elder Law';
+            }
+
+            function updateDocumentTitle() {
+                const name = getCompanyName();
+                const title = name ? `${name} | Training Hub` : 'Training Hub';
+                try { document.title = title; } catch (_) {}
+                const loginTitleEl = document.getElementById('login-modal-title');
+                if (loginTitleEl) loginTitleEl.textContent = name ? `Login to ${name}` : 'Login to Training Academy';
+            }
+
+            function getCrmCurriculumContext() {
+                const curricula = db.crmCurricula || {};
+                const parts = [];
+                CRM_DEPARTMENTS.forEach(dept => {
+                    const items = (curricula[dept.id] && curricula[dept.id].items) || [];
+                    if (!items.length) return;
+                    parts.push(`\n--- ${dept.name} ---`);
+                    items.forEach(it => {
+                        parts.push(`Title: ${it.title}`);
+                        if (it.description) parts.push(`Description: ${it.description}`);
+                        if (it.url) parts.push(`URL: ${it.url}`);
+                        if (it.steps && it.steps.length) it.steps.forEach(s => parts.push(`Step ${s.stepNumber}: ${typeof s === 'object' && s.instruction ? s.instruction : s}`));
+                    });
+                });
+                return parts.length ? parts.join('\n') : '(No curriculum items yet.)';
+            }
             
             async function initializeData() {
                 try {
@@ -1301,7 +1361,7 @@
             window.addEventListener('firebase-ready', async () => {
                 console.log('Firebase ready event triggered');
                 await initializeData();
-                
+                updateDocumentTitle();
                 // Save initial data to Firebase if it doesn't exist
                 try {
                     const itemsData = await loadFromFirebase('items');
@@ -1728,7 +1788,8 @@
                 if (!el) return;
                 if (btn) btn.disabled = true;
                 el.innerHTML = '<p class="text-slate-500">Loading...</p>';
-                const prompt = `Briefly list 4-6 current or recent topics that matter to an Estate Planning and Elder Law practice: laws or bills that could impact the business, regulatory updates, community or bar association opportunities, and trending best practices. Use short bullet points. Be concise (1 line per item). If you don't have real-time data, suggest general areas to watch.`;
+                const practiceLabel = getPracticeAreaForPrompt();
+                const prompt = `Briefly list 4-6 current or recent topics that matter to a ${practiceLabel} practice: laws or bills that could impact the business, regulatory updates, community or bar association opportunities, and trending best practices. Use short bullet points. Be concise (1 line per item). If you don't have real-time data, suggest general areas to watch.`;
                 const text = await callGemini(prompt);
                 if (el) el.innerHTML = text ? text.split(/\n/).filter(Boolean).map(l => `<p class="text-slate-700">• ${l.replace(/^[\s\-•*]+/, '').trim()}</p>`).join('') : '<p class="text-slate-500">Updates could not be loaded. Try again later.</p>';
                 if (btn) btn.disabled = false;
@@ -1813,11 +1874,13 @@
                 container.innerHTML = '';
 
                 if (!appState.isAuthenticated) {
+                    const companyName = getCompanyName();
+                    const welcomeLine = (db.settings && db.settings.welcomeLine) ? db.settings.welcomeLine.trim() : 'Please login to access your training resources and track your progress.';
                     container.innerHTML = `
                         <div class="flex items-center justify-center h-full">
                             <div class="text-center">
-                                <h1 class="text-3xl font-bold text-slate-900 mb-4">Welcome to The Siegel Law Group Academy</h1>
-                                <p class="text-slate-600 mb-8">Please login to access your training resources and track your progress.</p>
+                                <h1 class="text-3xl font-bold text-slate-900 mb-4">Welcome to ${companyName || 'Training Academy'}</h1>
+                                <p class="text-slate-600 mb-8">${welcomeLine}</p>
                                 <button id="login-prompt-btn" class="bg-[var(--tnt-pink)] text-white px-6 py-3 rounded-lg font-medium hover:bg-[#d6005b] transition-colors">
                                     Login to Continue
                                 </button>
@@ -1910,14 +1973,16 @@
                                     ${createBadge('Trust Administration Master', false)}
                                 </div>
                             </div>
+                            ${(db.settings && db.settings.showIndustryUpdates !== false) ? `
                             <div class="content-card">
                                 <h2 class="text-xl font-bold mb-4">Industry Updates & Trends</h2>
-                                <p class="text-sm text-slate-600 mb-3">Estate Planning, Elder Law, and impact on our practice.</p>
+                                <p class="text-sm text-slate-600 mb-3">${getPracticeAreaLabel()}</p>
                                 <div id="industry-updates-content" class="text-sm text-slate-700 space-y-2 min-h-[80px]">
                                     <p class="text-slate-500">Loading...</p>
                                 </div>
                                 <button type="button" id="refresh-industry-updates" class="mt-3 text-sm text-[var(--tnt-pink)] hover:underline">Refresh updates</button>
                             </div>
+                            ` : ''}
                         </div>
                     </div>
                 `;
@@ -2215,11 +2280,27 @@
             }
             
             function renderSettings() {
-                const platformCrm = (db.settings && db.settings.platformCrm) || '';
+                const s = db.settings || {};
+                const platformCrm = s.platformCrm || '';
+                const companyName = s.companyName || '';
+                const practiceArea = s.practiceArea || '';
+                const showIndustryUpdates = s.showIndustryUpdates !== false;
+                const specialistStyle = s.specialistStyle || 'detailed';
+                const welcomeLine = s.welcomeLine || '';
                 return `
                     <div class="space-y-8">
                         <h1 class="text-3xl font-bold">Settings</h1>
-                        <p class="text-slate-600">Platform-wide options. Changes here affect the whole team.</p>
+                        <p class="text-slate-600">Platform-wide options. Changes here affect the whole team and make the app more personalized.</p>
+
+                        <div class="content-card max-w-xl">
+                            <h2 class="text-lg font-bold mb-4">Company identity</h2>
+                            <p class="text-sm text-slate-600 mb-3">Used in the login screen, dashboard, and browser title.</p>
+                            <label class="block text-sm font-medium text-slate-700 mb-1">Company / practice name</label>
+                            <input type="text" id="settings-company-name" value="${companyName.replace(/"/g, '&quot;')}" placeholder="e.g. The Siegel Law Group, P.A." class="w-full p-3 border border-slate-300 rounded-md focus:ring-2 focus:ring-[var(--tnt-pink)] focus:border-transparent mb-4">
+                            <label class="block text-sm font-medium text-slate-700 mb-1">Custom welcome line (optional)</label>
+                            <input type="text" id="settings-welcome-line" value="${welcomeLine.replace(/"/g, '&quot;')}" placeholder="e.g. Your training hub for estate planning excellence" class="w-full p-3 border border-slate-300 rounded-md focus:ring-2 focus:ring-[var(--tnt-pink)] focus:border-transparent">
+                        </div>
+
                         <div class="content-card max-w-xl">
                             <h2 class="text-lg font-bold mb-4">Company CRM</h2>
                             <p class="text-sm text-slate-600 mb-3">Choose the CRM your team uses. The CRM tab will focus on this and show relevant curricula by role.</p>
@@ -2227,7 +2308,36 @@
                                 <option value="">— Select CRM —</option>
                                 ${POPULAR_CRMS.map(c => `<option value="${c.id}" ${platformCrm === c.id ? 'selected' : ''}>${c.name}</option>`).join('')}
                             </select>
-                            <button type="button" id="settings-save-btn" class="mt-4 px-4 py-2 bg-[var(--tnt-pink)] text-white rounded-lg font-medium hover:bg-[#d6005b]">Save settings</button>
+                        </div>
+
+                        <div class="content-card max-w-xl">
+                            <h2 class="text-lg font-bold mb-4">Dashboard & content</h2>
+                            <p class="text-sm text-slate-600 mb-3">Control what appears on the dashboard and how AI content is tailored.</p>
+                            <label class="block text-sm font-medium text-slate-700 mb-1">Primary practice area</label>
+                            <select id="settings-practice-area" class="w-full p-3 border border-slate-300 rounded-md focus:ring-2 focus:ring-[var(--tnt-pink)] focus:border-transparent mb-4">
+                                <option value="">— Select —</option>
+                                ${PRACTICE_AREAS.map(a => `<option value="${a.id}" ${practiceArea === a.id ? 'selected' : ''}>${a.name}</option>`).join('')}
+                            </select>
+                            <p class="text-xs text-slate-500 mb-2">Used for Industry Updates and AI context (e.g. estate planning, elder law).</p>
+                            <label class="flex items-center gap-2 cursor-pointer">
+                                <input type="checkbox" id="settings-show-industry-updates" ${showIndustryUpdates ? 'checked' : ''} class="rounded border-slate-300 text-[var(--tnt-pink)] focus:ring-[var(--tnt-pink)]">
+                                <span class="text-sm text-slate-700">Show Industry Updates & Trends on dashboard</span>
+                            </label>
+                        </div>
+
+                        <div class="content-card max-w-xl">
+                            <h2 class="text-lg font-bold mb-4">Training specialist (AI)</h2>
+                            <p class="text-sm text-slate-600 mb-3">How the &quot;Ask the training specialist&quot; bot should answer on the CRM tab.</p>
+                            <select id="settings-specialist-style" class="w-full p-3 border border-slate-300 rounded-md focus:ring-2 focus:ring-[var(--tnt-pink)] focus:border-transparent">
+                                <option value="concise" ${specialistStyle === 'concise' ? 'selected' : ''}>Concise — short, direct answers</option>
+                                <option value="detailed" ${specialistStyle === 'detailed' ? 'selected' : ''}>Detailed — full explanations with context</option>
+                                <option value="step-by-step" ${specialistStyle === 'step-by-step' ? 'selected' : ''}>Step-by-step — numbered instructions</option>
+                            </select>
+                        </div>
+
+                        <div class="flex items-center gap-4">
+                            <button type="button" id="settings-save-btn" class="px-6 py-2.5 bg-[var(--tnt-pink)] text-white rounded-lg font-medium hover:bg-[#d6005b]">Save all settings</button>
+                            <span id="settings-save-hint" class="text-sm text-slate-500 hidden">Saving...</span>
                         </div>
                     </div>
                 `;
@@ -2269,19 +2379,39 @@
                                                 </div>
                                                 ${isAdmin ? `<button type="button" class="crm-build-curriculum-btn px-3 py-1.5 bg-[var(--tnt-pink)] text-white rounded-lg text-sm font-medium hover:bg-[#d6005b]" data-dept-id="${dept.id}" data-dept-name="${dept.name}">Build curriculum</button>` : ''}
                                             </div>
-                                            <ul class="space-y-2">
-                                                ${items.length ? items.slice(0, 5).map((item, i) => `
-                                                    <li class="flex items-center justify-between text-sm">
-                                                        <a href="${item.url}" target="_blank" rel="noopener" class="text-[var(--tnt-pink)] hover:underline truncate flex-1">${item.title}</a>
-                                                        ${isAdmin ? `<button type="button" class="crm-remove-dept-item text-slate-400 hover:text-red-600 ml-2 flex-shrink-0" data-dept-id="${dept.id}" data-index="${i}"><span data-lucide="trash-2" class="w-3.5 h-3.5"></span></button>` : ''}
+                                            <ul class="space-y-4">
+                                                ${items.length ? items.map((item, i) => {
+                                                    const steps = (item.steps && item.steps.length) ? item.steps : [];
+                                                    const desc = item.description || '';
+                                                    return `
+                                                    <li class="border border-slate-200 rounded-lg p-3 bg-slate-50/50">
+                                                        <div class="flex justify-between items-start gap-2">
+                                                            <div class="min-w-0 flex-1">
+                                                                <a href="${item.url || '#'}" target="_blank" rel="noopener" class="font-medium text-[var(--tnt-pink)] hover:underline">${item.title}</a>
+                                                                ${desc ? `<p class="text-xs text-slate-600 mt-1">${desc}</p>` : ''}
+                                                            </div>
+                                                            ${isAdmin ? `<button type="button" class="crm-remove-dept-item text-slate-400 hover:text-red-600 flex-shrink-0" data-dept-id="${dept.id}" data-index="${i}"><span data-lucide="trash-2" class="w-3.5 h-3.5"></span></button>` : ''}
+                                                        </div>
+                                                        ${steps.length ? `<div class="mt-2 pt-2 border-t border-slate-200"><p class="text-xs font-semibold text-slate-500 mb-1">Steps</p><ol class="list-decimal list-inside text-xs text-slate-700 space-y-0.5">${steps.map(s => `<li>${typeof s === 'object' && s.instruction ? s.instruction : s}</li>`).join('')}</ol></div>` : ''}
                                                     </li>
-                                                `).join('') : '<li class="text-slate-500 text-sm">No resources yet.</li>'}
-                                                ${items.length > 5 ? `<li class="text-slate-500 text-sm">+ ${items.length - 5} more</li>` : ''}
+                                                    `;
+                                                }).join('') : '<li class="text-slate-500 text-sm">No resources yet.</li>'}
                                             </ul>
                                         </div>
                                     `;
                                 }).join('')}
                             </div>
+                        </section>
+
+                        <section class="content-card mt-8">
+                            <h2 class="text-xl font-bold mb-2">Ask the training specialist</h2>
+                            <p class="text-slate-600 mb-4">Ask a question about the curriculum or how to do something in the CRM. Answers are based on your training materials and best practices.</p>
+                            <div class="flex gap-2 mb-4">
+                                <input type="text" id="crm-specialist-question" placeholder="e.g. How do I log a call in HubSpot?" class="flex-1 p-3 border border-slate-300 rounded-lg text-sm" />
+                                <button type="button" id="crm-specialist-ask" class="px-4 py-3 bg-[var(--tnt-pink)] text-white rounded-lg font-medium text-sm hover:bg-[#d6005b]">Ask</button>
+                            </div>
+                            <div id="crm-specialist-answer" class="hidden p-4 bg-slate-50 border border-slate-200 rounded-lg text-sm text-slate-700 whitespace-pre-wrap"></div>
+                            <div id="crm-specialist-loading" class="hidden p-4 text-slate-500 text-sm">Thinking...</div>
                         </section>
                     </div>
                 `;
@@ -2903,18 +3033,30 @@
                         loadIndustryUpdates();
                     }
                     
-                    // Settings: save platform CRM
+                    // Settings: save all settings
                     const settingsSaveBtn = e.target.closest('#settings-save-btn');
                     if (settingsSaveBtn) {
                         e.preventDefault();
-                        const select = document.getElementById('settings-platform-crm');
-                        if (select) {
-                            db.settings = db.settings || {};
-                            db.settings.platformCrm = select.value || null;
-                            saveToFirebase('settings', db.settings);
-                            render();
-                            showNotification('Settings saved.', 'success');
-                        }
+                        db.settings = db.settings || {};
+                        const companyNameEl = document.getElementById('settings-company-name');
+                        const welcomeLineEl = document.getElementById('settings-welcome-line');
+                        const platformCrmEl = document.getElementById('settings-platform-crm');
+                        const practiceAreaEl = document.getElementById('settings-practice-area');
+                        const showIndustryEl = document.getElementById('settings-show-industry-updates');
+                        const specialistStyleEl = document.getElementById('settings-specialist-style');
+                        if (companyNameEl) db.settings.companyName = companyNameEl.value.trim() || '';
+                        if (welcomeLineEl) db.settings.welcomeLine = welcomeLineEl.value.trim() || '';
+                        if (platformCrmEl) db.settings.platformCrm = platformCrmEl.value || null;
+                        if (practiceAreaEl) db.settings.practiceArea = practiceAreaEl.value || '';
+                        if (showIndustryEl) db.settings.showIndustryUpdates = showIndustryEl.checked;
+                        if (specialistStyleEl) db.settings.specialistStyle = specialistStyleEl.value || 'detailed';
+                        const hint = document.getElementById('settings-save-hint');
+                        if (hint) { hint.classList.remove('hidden'); hint.textContent = 'Saving...'; }
+                        await saveToFirebase('settings', db.settings);
+                        if (hint) { hint.textContent = 'Saved.'; setTimeout(() => { hint.classList.add('hidden'); }, 1500); }
+                        render();
+                        updateDocumentTitle();
+                        showNotification('Settings saved.', 'success');
                     }
                     
                     // CRM: link to Settings from "Your CRM"
@@ -3411,13 +3553,20 @@
                         e.preventDefault();
                         const titleEl = document.getElementById('crm-builder-custom-title');
                         const urlEl = document.getElementById('crm-builder-custom-url');
+                        const descEl = document.getElementById('crm-builder-custom-desc');
+                        const stepsEl = document.getElementById('crm-builder-custom-steps');
                         const title = titleEl && titleEl.value.trim();
                         const url = urlEl && urlEl.value.trim();
+                        const description = descEl && descEl.value.trim();
+                        const stepsText = stepsEl && stepsEl.value.trim();
+                        const steps = stepsText ? stepsText.split(/\n/).map((line, idx) => ({ stepNumber: idx + 1, instruction: line.trim() })).filter(s => s.instruction) : [];
                         if (title && url) {
                             appState.crmBuilderPendingItems = appState.crmBuilderPendingItems || [];
-                            appState.crmBuilderPendingItems.push({ title, url, type: 'Resource' });
+                            appState.crmBuilderPendingItems.push({ title, url, type: 'Resource', ...(description && { description }), ...(steps.length && { steps }) });
                             if (titleEl) titleEl.value = '';
                             if (urlEl) urlEl.value = '';
+                            if (descEl) descEl.value = '';
+                            if (stepsEl) stepsEl.value = '';
                             updateCrmBuilderModalList();
                         }
                     }
@@ -3452,20 +3601,37 @@
                         return;
                     }
                     outEl.classList.remove('hidden');
-                    outEl.textContent = 'Finding the right trainings for ' + deptName + '...';
-                    const prompt = `You are an onboarding specialist. For the role "${deptName}" using ${platformCrm.name} CRM, list exactly 4-6 essential training topics or resources (videos, setup steps, help articles) they need—no more. Be specific and concise. Format each line as: "Title - one line description". Only what this role needs to use the CRM effectively.`;
+                    outEl.textContent = 'Compiling curriculum from help center and best practices for ' + deptName + '...';
+                    const prompt = `You are an advanced training specialist. For the role "${deptName}" using ${platformCrm.name} CRM, compile a short curriculum based on the CRM's help center and common YouTube/training resources. For each topic, provide: a title, a one-sentence description, 3-5 clear step-by-step instructions (SOP), and a suggested URL (use ${platformCrm.helpUrl} or academy URL when relevant). Respond with ONLY a valid JSON array, no other text. Each item must have: "title", "description", "steps" (array of objects with "stepNumber" and "instruction"), "url". Example format: [{"title":"...","description":"...","steps":[{"stepNumber":1,"instruction":"..."}],"url":"..."}]. Return 4-6 items.`;
                     const text = await callGemini(prompt);
-                    outEl.innerHTML = text ? text.replace(/\n/g, '<br>') : 'Could not load suggestions.';
-                    const lines = (text || '').split(/\n/).filter(l => l.trim());
-                    const suggestions = lines.map(line => {
-                        const match = line.replace(/^\d+\.\s*/, '').trim().match(/^(.+?)(?:\s*[-–]\s*(.+))?$/);
-                        const title = (match && match[1]) ? match[1].trim() : line.trim();
-                        return { title, url: platformCrm.helpUrl, type: 'Training' };
-                    });
+                    let suggestions = [];
+                    try {
+                        const raw = (text || '').replace(/```json?\s*|\s*```/g, '').trim();
+                        const parsed = JSON.parse(raw);
+                        suggestions = Array.isArray(parsed) ? parsed.map(it => ({
+                            title: it.title || 'Untitled',
+                            description: it.description || '',
+                            steps: Array.isArray(it.steps) ? it.steps.map((s, i) => ({ stepNumber: (s && s.stepNumber) || i + 1, instruction: (s && s.instruction) || String(s) })) : [],
+                            url: it.url || platformCrm.helpUrl,
+                            type: 'Training'
+                        })) : [];
+                    } catch (_) {
+                        const lines = (text || '').split(/\n/).filter(l => l.trim());
+                        suggestions = lines.slice(0, 6).map(line => {
+                            const match = line.replace(/^\d+\.\s*/, '').trim().match(/^(.+?)(?:\s*[-–]\s*(.+))?$/);
+                            const title = (match && match[1]) ? match[1].trim() : line.trim();
+                            return { title, description: '', steps: [], url: platformCrm.helpUrl, type: 'Training' };
+                        });
+                    }
+                    outEl.innerHTML = suggestions.length ? 'Add any item below to your curriculum.' : (text ? ('Could not parse suggestions. Raw: ' + (text.slice(0, 200) + (text.length > 200 ? '...' : ''))) : 'Could not load suggestions.');
                     listEl.innerHTML = suggestions.map((s, i) => `
-                        <div class="flex items-center justify-between p-2 bg-white border rounded text-sm">
-                            <span class="flex-1 truncate">${s.title}</span>
-                            <button type="button" class="crm-builder-add-suggestion ml-2 px-2 py-1 bg-[var(--tnt-pink)] text-white rounded text-xs" data-index="${i}">Add</button>
+                        <div class="p-2 bg-white border rounded text-sm">
+                            <div class="flex justify-between items-start gap-2">
+                                <span class="font-medium truncate flex-1">${s.title}</span>
+                                <button type="button" class="crm-builder-add-suggestion flex-shrink-0 px-2 py-1 bg-[var(--tnt-pink)] text-white rounded text-xs" data-index="${i}">Add</button>
+                            </div>
+                            ${s.description ? `<p class="text-xs text-slate-600 mt-1">${s.description}</p>` : ''}
+                            ${(s.steps && s.steps.length) ? `<ol class="list-decimal list-inside text-xs text-slate-500 mt-1">${s.steps.slice(0, 3).map(st => `<li>${st.instruction || st}</li>`).join('')}${s.steps.length > 3 ? '...' : ''}</ol>` : ''}
                         </div>
                     `).join('');
                     window._crmBuilderSuggestions = suggestions;
@@ -3481,13 +3647,40 @@
                         if (item) {
                             appState.crmBuilderPendingItems = appState.crmBuilderPendingItems || [];
                             if (!appState.crmBuilderPendingItems.some(i => i.title === item.title)) {
-                                appState.crmBuilderPendingItems.push(item);
+                                appState.crmBuilderPendingItems.push({ ...item, steps: item.steps || [] });
                                 updateCrmBuilderModalList();
                             }
                         }
                     }
                 });
-                
+
+                // Ask the training specialist
+                document.addEventListener('click', async e => {
+                    if (!e.target.closest('#crm-specialist-ask')) return;
+                    e.preventDefault();
+                    const inputEl = document.getElementById('crm-specialist-question');
+                    const answerEl = document.getElementById('crm-specialist-answer');
+                    const loadingEl = document.getElementById('crm-specialist-loading');
+                    const question = inputEl && inputEl.value.trim();
+                    if (!question) return;
+                    const platformCrmId = (db.settings && db.settings.platformCrm);
+                    const platformCrm = platformCrmId ? POPULAR_CRMS.find(c => c.id === platformCrmId) : null;
+                    const crmName = platformCrm ? platformCrm.name : 'the CRM';
+                    const style = (db.settings && db.settings.specialistStyle) || 'detailed';
+                    const styleInstruction = style === 'concise' ? 'Give short, direct answers (2-4 sentences).' : style === 'step-by-step' ? 'Always give numbered step-by-step instructions where relevant.' : 'Give full explanations with context.';
+                    if (answerEl) { answerEl.classList.add('hidden'); answerEl.textContent = ''; }
+                    if (loadingEl) loadingEl.classList.remove('hidden');
+                    const context = getCrmCurriculumContext();
+                    const systemPrompt = `You are an advanced training specialist. Answer the student's question using the curriculum and training resources below. If the answer is in the curriculum, use it and cite it. You may also use your knowledge of ${crmName} help center and best practices. ${styleInstruction} Be clear and helpful.\n\nCurriculum and resources:\n${context}`;
+                    const fullPrompt = systemPrompt + '\n\nStudent question: ' + question;
+                    const answer = await callGemini(fullPrompt);
+                    if (loadingEl) loadingEl.classList.add('hidden');
+                    if (answerEl) {
+                        answerEl.textContent = answer || 'Sorry, I could not generate an answer. Try rephrasing or check your connection.';
+                        answerEl.classList.remove('hidden');
+                    }
+                });
+
                 // Form submissions
                 const loginForm = document.getElementById('login-form');
                 const addResourceForm = document.getElementById('add-resource-form');
@@ -3933,8 +4126,12 @@
                 document.getElementById('crm-builder-suggestions-list').innerHTML = '';
                 const customTitle = document.getElementById('crm-builder-custom-title');
                 const customUrl = document.getElementById('crm-builder-custom-url');
+                const customDesc = document.getElementById('crm-builder-custom-desc');
+                const customSteps = document.getElementById('crm-builder-custom-steps');
                 if (customTitle) customTitle.value = '';
                 if (customUrl) customUrl.value = '';
+                if (customDesc) customDesc.value = '';
+                if (customSteps) customSteps.value = '';
                 showModal('crm-curriculum-builder-modal');
                 lucide.createIcons();
             }
@@ -3943,12 +4140,21 @@
                 const list = document.getElementById('crm-builder-items-list');
                 if (!list) return;
                 const items = appState.crmBuilderPendingItems || [];
-                list.innerHTML = items.map((item, i) => `
-                    <li class="flex items-center justify-between p-2 bg-slate-50 rounded text-sm">
-                        <a href="${item.url}" target="_blank" rel="noopener" class="text-[var(--tnt-pink)] hover:underline truncate flex-1">${item.title}</a>
-                        <button type="button" class="crm-builder-remove-item text-slate-400 hover:text-red-600 ml-2" data-index="${i}"><span data-lucide="trash-2" class="w-4 h-4"></span></button>
-                    </li>
-                `).join('') || '<li class="text-slate-500 text-sm">No items yet. Use AI suggestions or add custom.</li>';
+                list.innerHTML = items.map((item, i) => {
+                    const steps = (item.steps && item.steps.length) ? item.steps : [];
+                    const desc = item.description || '';
+                    return `
+                    <li class="p-3 bg-slate-50 rounded-lg border border-slate-200 text-sm">
+                        <div class="flex justify-between items-start gap-2">
+                            <div class="min-w-0 flex-1">
+                                <a href="${item.url || '#'}" target="_blank" rel="noopener" class="text-[var(--tnt-pink)] hover:underline font-medium">${item.title}</a>
+                                ${desc ? `<p class="text-xs text-slate-600 mt-1">${desc}</p>` : ''}
+                                ${steps.length ? `<ol class="list-decimal list-inside text-xs text-slate-600 mt-1">${steps.map(s => `<li>${typeof s === 'object' && s.instruction ? s.instruction : s}</li>`).join('')}</ol>` : ''}
+                            </div>
+                            <button type="button" class="crm-builder-remove-item text-slate-400 hover:text-red-600 flex-shrink-0" data-index="${i}"><span data-lucide="trash-2" class="w-4 h-4"></span></button>
+                        </div>
+                    </li>`;
+                }).join('') || '<li class="text-slate-500 text-sm">No items yet. Use AI suggestions or add custom.</li>';
                 lucide.createIcons();
             }
             
