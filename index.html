@@ -2468,7 +2468,7 @@
                                 <button class="bg-white/20 hover:bg-white/30 text-white p-2 rounded-full" title="Copy URL" onclick="copyMediaUrl('${media.url}')">
                                     <span data-lucide="copy" class="w-4 h-4"></span>
                                 </button>
-                                <button class="bg-red-500/80 hover:bg-red-600/80 text-white p-2 rounded-full delete-media-btn" title="Delete" data-media-id="${media.id}" data-media-title="${media.title}">
+                                <button type="button" class="delete-media-btn bg-red-500/80 hover:bg-red-600/80 text-white p-2 rounded-full" title="Delete" onclick="handleDeleteMedia(${media.id})">
                                     <span data-lucide="trash-2" class="w-4 h-4"></span>
                                 </button>
                             </div>
@@ -3084,6 +3084,31 @@
                     }
                 });
                 
+                // Delete media from library (capture phase so we run first; trash icon click always caught)
+                document.addEventListener('click', async (e) => {
+                    const deleteMediaBtn = e.target.closest('.delete-media-btn');
+                    if (deleteMediaBtn) {
+                        e.preventDefault();
+                        e.stopPropagation();
+                        const mediaId = deleteMediaBtn.getAttribute('data-media-id');
+                        const mediaTitle = (deleteMediaBtn.getAttribute('data-media-title') || 'this item').replace(/"/g, '');
+                        const media = db.mediaLibrary && (db.mediaLibrary[mediaId] || db.mediaLibrary[Number(mediaId)]);
+                        if (media && confirm(`Delete "${mediaTitle}" from the Media Library? This cannot be undone.`)) {
+                            delete db.mediaLibrary[media.id];
+                            try {
+                                await saveToFirebase('mediaLibrary', db.mediaLibrary);
+                                render();
+                                showNotification(`"${mediaTitle}" removed from Media Library.`, 'success');
+                            } catch (err) {
+                                console.error('Error deleting media:', err);
+                                showNotification('Failed to save. Please try again.', 'error');
+                            }
+                        } else if (!media) {
+                            showNotification('Media item not found.', 'error');
+                        }
+                    }
+                }, true);
+                
                 // Modal interactions
                 document.addEventListener('click', e => {
                     const closeBtn = e.target.closest('.close-modal-btn');
@@ -3477,7 +3502,7 @@
                             try {
                                 const base64Url = await fileToBase64(avatarFile);
                                 member.avatar = base64Url;
-                                showNotification('Profile picture saved (local storage)', 'info');
+                                showNotification('Profile picture saved and synced to all devices. (Storage upload failed; image stored in profile.)', 'info');
                             } catch (fallbackError) {
                                 console.error('Base64 fallback also failed:', fallbackError);
                                 showNotification('Profile picture upload failed!', 'error');
@@ -3906,6 +3931,24 @@
                 appState.currentView = 'dashboard';
                 render();
             }
+            
+            window.handleDeleteMedia = async function(mediaId) {
+                const media = db.mediaLibrary && (db.mediaLibrary[mediaId] || db.mediaLibrary[Number(mediaId)]);
+                if (!media) {
+                    showNotification('Media item not found.', 'error');
+                    return;
+                }
+                if (!confirm(`Delete "${(media.title || '').replace(/"/g, '')}" from the Media Library? This cannot be undone.`)) return;
+                delete db.mediaLibrary[media.id];
+                try {
+                    await saveToFirebase('mediaLibrary', db.mediaLibrary);
+                    render();
+                    showNotification(`"${(media.title || '').replace(/"/g, '')}" removed from Media Library.`, 'success');
+                } catch (err) {
+                    console.error('Error deleting media:', err);
+                    showNotification('Failed to save. Please try again.', 'error');
+                }
+            };
             
             function showMediaPicker() {
                 // Populate the picker with media items
