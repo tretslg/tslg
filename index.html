@@ -674,6 +674,39 @@
     </div>
 
     <!-- Delete Resource Confirmation Modal -->
+    <!-- Build CRM Curriculum Modal (guided path by role/department) -->
+    <div id="crm-curriculum-builder-modal" class="modal-overlay hidden fixed inset-0 flex items-center justify-center p-4">
+        <div class="bg-white rounded-lg shadow-xl w-full max-w-2xl p-6 max-h-[90vh] overflow-y-auto">
+            <div class="flex justify-between items-center mb-4">
+                <h2 class="text-xl font-bold text-slate-900">Build CRM Curriculum</h2>
+                <button type="button" class="close-modal-btn text-slate-400 hover:text-slate-600" data-modal-id="crm-curriculum-builder-modal"><span data-lucide="x" class="w-6 h-6"></span></button>
+            </div>
+            <p id="crm-builder-subtitle" class="text-sm text-slate-600 mb-4">Add the right trainings for this role. Suggestions stay relevant so learners don't waste time.</p>
+            <div class="mb-4">
+                <button type="button" id="crm-builder-ai-suggest" class="inline-flex items-center px-4 py-2 bg-[var(--tnt-pink)] text-white rounded-lg text-sm font-medium hover:bg-[#d6005b]">
+                    <span data-lucide="sparkles" class="w-4 h-4 mr-2"></span>
+                    Get AI suggestions for this role
+                </button>
+            </div>
+            <div id="crm-builder-ai-output" class="hidden mb-4 p-4 bg-slate-50 rounded-lg border text-sm"></div>
+            <div id="crm-builder-suggestions-list" class="mb-4 space-y-2"></div>
+            <div class="border-t pt-4 mb-4">
+                <label class="block text-sm font-medium text-slate-700 mb-2">Add custom resource</label>
+                <div class="flex gap-2">
+                    <input type="text" id="crm-builder-custom-title" placeholder="Title" class="flex-1 p-2 border border-slate-300 rounded-md text-sm">
+                    <input type="text" id="crm-builder-custom-url" placeholder="URL" class="flex-1 p-2 border border-slate-300 rounded-md text-sm">
+                    <button type="button" id="crm-builder-add-custom" class="px-3 py-2 bg-slate-100 hover:bg-slate-200 rounded-md text-sm">Add</button>
+                </div>
+            </div>
+            <h3 class="text-sm font-semibold text-slate-700 mb-2">Curriculum items</h3>
+            <ul id="crm-builder-items-list" class="space-y-2 mb-4 min-h-[60px]"></ul>
+            <div class="flex justify-end gap-2">
+                <button type="button" class="close-modal-btn px-4 py-2 border border-slate-300 rounded-md text-slate-700" data-modal-id="crm-curriculum-builder-modal">Cancel</button>
+                <button type="button" id="crm-builder-save" class="px-4 py-2 bg-[var(--tnt-pink)] text-white rounded-md font-medium">Save curriculum</button>
+            </div>
+        </div>
+    </div>
+
     <div id="delete-resource-modal" class="modal-overlay hidden fixed inset-0 flex items-center justify-center p-4">
         <div class="bg-white rounded-lg shadow-xl w-full max-w-md p-6">
             <div class="flex items-center mb-6">
@@ -1070,9 +1103,20 @@
                         estimatedTime: '2.5 hours'
                     }
                 },
-                // --- CRM CURRICULA (per-CRM training playlists) ---
-                crmCurricula: {}
+                // --- CRM CURRICULA by department (Intake, Sales, Attorneys, etc.) ---
+                crmCurricula: {},
+                // --- PLATFORM SETTINGS (admin-configured, e.g. which CRM the company uses) ---
+                settings: { platformCrm: null }
             };
+
+            // Departments that can have CRM curricula (for "curriculums by department")
+            const CRM_DEPARTMENTS = [
+                { id: 'intake', name: 'Intake', description: 'Client intake and first touch' },
+                { id: 'sales', name: 'Sales', description: 'Pipeline and deal management' },
+                { id: 'attorneys', name: 'Attorneys', description: 'Case and matter management' },
+                { id: 'operations', name: 'Operations', description: 'Process and workflow' },
+                { id: 'marketing', name: 'Marketing', description: 'Leads and campaigns' }
+            ];
 
             // Popular CRMs with links to their academies/help centers (for training resources)
             const POPULAR_CRMS = [
@@ -1214,6 +1258,7 @@
                     const firebaseCredentials = await loadFromFirebase('credentials');
                     const firebaseMediaLibrary = await loadFromFirebase('mediaLibrary');
                     const firebaseCrmCurricula = await loadFromFirebase('crmCurricula');
+                    const firebaseSettings = await loadFromFirebase('settings');
                     
                     console.log('Firebase data loaded:', {
                         users: !!firebaseUsers,
@@ -1221,7 +1266,8 @@
                         onboarding: !!firebaseOnboarding,
                         credentials: !!firebaseCredentials,
                         mediaLibrary: !!firebaseMediaLibrary,
-                        crmCurricula: !!firebaseCrmCurricula
+                        crmCurricula: !!firebaseCrmCurricula,
+                        settings: !!firebaseSettings
                     });
                     
                     // Use Firebase data if available, otherwise use default data
@@ -1231,6 +1277,7 @@
                     if (firebaseCredentials && typeof firebaseCredentials === 'object') db.credentials = firebaseCredentials;
                     if (firebaseMediaLibrary && typeof firebaseMediaLibrary === 'object') db.mediaLibrary = firebaseMediaLibrary;
                     if (firebaseCrmCurricula && typeof firebaseCrmCurricula === 'object') db.crmCurricula = firebaseCrmCurricula;
+                    if (firebaseSettings && typeof firebaseSettings === 'object') db.settings = firebaseSettings;
                     
                     // Ensure all collections exist
                     if (!db.users) db.users = {};
@@ -1239,6 +1286,7 @@
                     if (!db.credentials) db.credentials = {};
                     if (!db.mediaLibrary) db.mediaLibrary = {};
                     if (!db.crmCurricula) db.crmCurricula = {};
+                    if (!db.settings) db.settings = { platformCrm: null };
                     
                     console.log('Data initialized from Firebase');
                     console.log('Current onboarding data:', db.onboarding);
@@ -1424,7 +1472,7 @@
                 const issues = [];
                 
                 // Check if all collections exist
-                const collections = ['users', 'items', 'onboarding', 'credentials', 'mediaLibrary', 'crmCurricula'];
+                const collections = ['users', 'items', 'onboarding', 'credentials', 'mediaLibrary', 'crmCurricula', 'settings'];
                 collections.forEach(collection => {
                     if (!db[collection]) {
                         issues.push(`Missing collection: ${collection}`);
@@ -1478,6 +1526,7 @@
                     await saveToFirebase('credentials', db.credentials);
                     await saveToFirebase('mediaLibrary', db.mediaLibrary);
                     await saveToFirebase('crmCurricula', db.crmCurricula);
+                    await saveToFirebase('settings', db.settings);
                     console.log('✅ Manual sync complete!');
                     alert('Data synced to Firebase successfully!');
                 } catch (error) {
@@ -1657,7 +1706,10 @@
                 sortBy: '',
                 currentDepartment: null, // For reorder functionality
                 showLoginModal: false,
-                selectedCrmId: null
+                selectedCrmId: null,
+                crmBuilderDeptId: null,
+                crmBuilderDeptName: null,
+                crmBuilderPendingItems: []
             };
 
             // =================================================================================
@@ -1699,6 +1751,7 @@
                     navLinks.push({ id: 'media-library', icon: 'image', label: 'Media Library' });
                     navLinks.push({ id: 'members', icon: 'users', label: 'Members' });
                     navLinks.push({ id: 'curriculum', icon: 'book-open', label: 'Curriculum Creator' });
+                    navLinks.push({ id: 'settings', icon: 'settings', label: 'Settings' });
                 }
 
                 nav.innerHTML = navLinks.map(link => `
@@ -1792,6 +1845,9 @@
                         break;
                     case 'crm':
                         container.innerHTML = renderCRM();
+                        break;
+                    case 'settings':
+                        container.innerHTML = renderSettings();
                         break;
                     case 'curriculum':
                         container.innerHTML = renderCurriculumCreator();
@@ -2158,57 +2214,75 @@
                 `;
             }
             
+            function renderSettings() {
+                const platformCrm = (db.settings && db.settings.platformCrm) || '';
+                return `
+                    <div class="space-y-8">
+                        <h1 class="text-3xl font-bold">Settings</h1>
+                        <p class="text-slate-600">Platform-wide options. Changes here affect the whole team.</p>
+                        <div class="content-card max-w-xl">
+                            <h2 class="text-lg font-bold mb-4">Company CRM</h2>
+                            <p class="text-sm text-slate-600 mb-3">Choose the CRM your team uses. The CRM tab will focus on this and show relevant curricula by role.</p>
+                            <select id="settings-platform-crm" class="w-full p-3 border border-slate-300 rounded-md focus:ring-2 focus:ring-[var(--tnt-pink)] focus:border-transparent">
+                                <option value="">— Select CRM —</option>
+                                ${POPULAR_CRMS.map(c => `<option value="${c.id}" ${platformCrm === c.id ? 'selected' : ''}>${c.name}</option>`).join('')}
+                            </select>
+                            <button type="button" id="settings-save-btn" class="mt-4 px-4 py-2 bg-[var(--tnt-pink)] text-white rounded-lg font-medium hover:bg-[#d6005b]">Save settings</button>
+                        </div>
+                    </div>
+                `;
+            }
+            
             function renderCRM() {
-                const selectedCrmId = appState.selectedCrmId || null;
-                const selectedCrm = selectedCrmId ? POPULAR_CRMS.find(c => c.id === selectedCrmId) : null;
-                const curriculum = selectedCrmId && db.crmCurricula[selectedCrmId] ? db.crmCurricula[selectedCrmId].items || [] : [];
+                const platformCrmId = (db.settings && db.settings.platformCrm) || null;
+                const platformCrm = platformCrmId ? POPULAR_CRMS.find(c => c.id === platformCrmId) : null;
+                const isAdmin = appState.currentUser && (appState.currentUser.accessLevel === 'admin' || appState.currentUser.role === 'creator');
                 return `
                     <div class="space-y-8">
                         <h1 class="text-3xl font-bold">CRM Training</h1>
-                        <p class="text-slate-600">Choose a CRM to access its academy and build a curriculum. Get AI recommendations based on your role.</p>
                         
-                        <div class="grid grid-cols-2 md:grid-cols-4 gap-4">
-                            ${POPULAR_CRMS.map(crm => `
-                                <div class="crm-card content-card cursor-pointer hover:shadow-lg transition-shadow ${selectedCrmId === crm.id ? 'ring-2 ring-[var(--tnt-pink)]' : ''}" data-crm-id="${crm.id}">
-                                    <div class="flex items-center gap-3 mb-2">
-                                        <span data-lucide="${crm.icon}" class="w-8 h-8 text-[var(--tnt-pink)]"></span>
-                                        <h3 class="font-semibold text-slate-900">${crm.name}</h3>
-                                    </div>
-                                    <a href="${crm.academyUrl}" target="_blank" rel="noopener" class="text-sm text-[var(--tnt-pink)] hover:underline" onclick="event.stopPropagation()">Open Academy →</a>
-                                </div>
-                            `).join('')}
-                        </div>
-                        
-                        ${selectedCrm ? `
-                        <div class="content-card">
-                            <h2 class="text-xl font-bold mb-4">${selectedCrm.name} Curriculum</h2>
-                            <div class="flex flex-wrap gap-3 mb-4">
-                                <a href="${selectedCrm.helpUrl}" target="_blank" rel="noopener" class="inline-flex items-center px-4 py-2 bg-slate-100 hover:bg-slate-200 rounded-lg text-sm font-medium text-slate-700">
-                                    <span data-lucide="external-link" class="w-4 h-4 mr-2"></span>
-                                    Help Center / Getting Started
+                        <section class="content-card">
+                            <h2 class="text-xl font-bold mb-2">Your CRM</h2>
+                            ${platformCrm ? `
+                                <p class="text-slate-600 mb-3">Your team uses <strong>${platformCrm.name}</strong>. Curricula below are tailored to this CRM.</p>
+                                <a href="${platformCrm.academyUrl}" target="_blank" rel="noopener" class="inline-flex items-center text-[var(--tnt-pink)] hover:underline text-sm">
+                                    <span data-lucide="external-link" class="w-4 h-4 mr-1"></span> Open ${platformCrm.name} Academy
                                 </a>
-                                <button type="button" id="crm-ai-recommend-btn" class="inline-flex items-center px-4 py-2 bg-[var(--tnt-pink)] hover:bg-[#d6005b] text-white rounded-lg text-sm font-medium">
-                                    <span data-lucide="sparkles" class="w-4 h-4 mr-2"></span>
-                                    Get AI recommendations for my role
-                                </button>
-                            </div>
-                            <div id="crm-ai-recommend-output" class="hidden mb-4 p-4 bg-slate-50 rounded-lg border border-slate-200 text-sm"></div>
-                            <ul id="crm-curriculum-list" class="space-y-2">
-                                ${curriculum.map((item, i) => `
-                                    <li class="flex items-center justify-between p-3 bg-slate-50 rounded-lg">
-                                        <div>
-                                            <a href="${item.url}" target="_blank" rel="noopener" class="font-medium text-[var(--tnt-pink)] hover:underline">${item.title}</a>
-                                            ${item.type ? `<span class="text-xs text-slate-500 ml-2">${item.type}</span>` : ''}
+                                ${isAdmin ? '<p class="text-xs text-slate-500 mt-2">Change CRM in <a href="#" class="settings-link text-[var(--tnt-pink)]">Settings</a>.</p>' : ''}
+                            ` : `
+                                <p class="text-slate-600">Your admin can set the company CRM in <strong>Settings</strong>. Once set, you'll see role-based curricula here.</p>
+                            `}
+                        </section>
+                        
+                        <section>
+                            <h2 class="text-xl font-bold mb-4">Curriculums by department</h2>
+                            <p class="text-slate-600 mb-6">Trainings for each role so everyone learns only what they need.</p>
+                            <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
+                                ${CRM_DEPARTMENTS.map(dept => {
+                                    const items = (db.crmCurricula[dept.id] && db.crmCurricula[dept.id].items) || [];
+                                    return `
+                                        <div class="content-card">
+                                            <div class="flex justify-between items-start mb-3">
+                                                <div>
+                                                    <h3 class="font-semibold text-slate-900">${dept.name}</h3>
+                                                    <p class="text-sm text-slate-500">${dept.description}</p>
+                                                </div>
+                                                ${isAdmin ? `<button type="button" class="crm-build-curriculum-btn px-3 py-1.5 bg-[var(--tnt-pink)] text-white rounded-lg text-sm font-medium hover:bg-[#d6005b]" data-dept-id="${dept.id}" data-dept-name="${dept.name}">Build curriculum</button>` : ''}
+                                            </div>
+                                            <ul class="space-y-2">
+                                                ${items.length ? items.slice(0, 5).map((item, i) => `
+                                                    <li class="flex items-center justify-between text-sm">
+                                                        <a href="${item.url}" target="_blank" rel="noopener" class="text-[var(--tnt-pink)] hover:underline truncate flex-1">${item.title}</a>
+                                                        ${isAdmin ? `<button type="button" class="crm-remove-dept-item text-slate-400 hover:text-red-600 ml-2 flex-shrink-0" data-dept-id="${dept.id}" data-index="${i}"><span data-lucide="trash-2" class="w-3.5 h-3.5"></span></button>` : ''}
+                                                    </li>
+                                                `).join('') : '<li class="text-slate-500 text-sm">No resources yet.</li>'}
+                                                ${items.length > 5 ? `<li class="text-slate-500 text-sm">+ ${items.length - 5} more</li>` : ''}
+                                            </ul>
                                         </div>
-                                        <button type="button" class="crm-remove-item text-slate-400 hover:text-red-600" data-crm-id="${selectedCrmId}" data-index="${i}">
-                                            <span data-lucide="trash-2" class="w-4 h-4"></span>
-                                        </button>
-                                    </li>
-                                `).join('')}
-                            </ul>
-                            ${curriculum.length === 0 ? '<p class="text-slate-500 py-4">No items yet. Open the Help Center or click "Get AI recommendations" to add trainings.</p>' : ''}
-                        </div>
-                        ` : '<p class="text-slate-500">Select a CRM above to build a curriculum and get AI recommendations.</p>'}
+                                    `;
+                                }).join('')}
+                            </div>
+                        </section>
                     </div>
                 `;
             }
@@ -2829,51 +2903,49 @@
                         loadIndustryUpdates();
                     }
                     
-                    // CRM card - select CRM
-                    const crmCard = e.target.closest('.crm-card');
-                    if (crmCard) {
+                    // Settings: save platform CRM
+                    const settingsSaveBtn = e.target.closest('#settings-save-btn');
+                    if (settingsSaveBtn) {
                         e.preventDefault();
-                        appState.selectedCrmId = crmCard.dataset.crmId;
-                        render();
-                    }
-                    
-                    // CRM remove curriculum item
-                    const crmRemoveItem = e.target.closest('.crm-remove-item');
-                    if (crmRemoveItem) {
-                        e.preventDefault();
-                        const crmId = crmRemoveItem.dataset.crmId;
-                        const index = parseInt(crmRemoveItem.dataset.index, 10);
-                        if (db.crmCurricula[crmId] && db.crmCurricula[crmId].items) {
-                            db.crmCurricula[crmId].items.splice(index, 1);
-                            saveToFirebase('crmCurricula', db.crmCurricula);
+                        const select = document.getElementById('settings-platform-crm');
+                        if (select) {
+                            db.settings = db.settings || {};
+                            db.settings.platformCrm = select.value || null;
+                            saveToFirebase('settings', db.settings);
                             render();
+                            showNotification('Settings saved.', 'success');
                         }
                     }
                     
-                    // CRM AI recommend button
-                    const crmAiBtn = e.target.closest('#crm-ai-recommend-btn');
-                    if (crmAiBtn) {
+                    // CRM: link to Settings from "Your CRM"
+                    const settingsLink = e.target.closest('.settings-link');
+                    if (settingsLink) {
                         e.preventDefault();
-                        const crmId = appState.selectedCrmId;
-                        const crm = POPULAR_CRMS.find(c => c.id === crmId);
-                        const outEl = document.getElementById('crm-ai-recommend-output');
-                        if (!outEl || !crm) return;
-                        outEl.classList.remove('hidden');
-                        outEl.textContent = 'Getting AI recommendations for your role...';
-                        const role = appState.currentUser?.title || appState.currentUser?.role || 'Team member';
-                        const dept = appState.currentUser?.department || '';
-                        const prompt = `You are a training advisor. For a person with job title "${role}"${dept ? ` in department "${dept}"` : ''}, recommend only the 3-5 most essential and relevant ${crm.name} CRM training topics or resources they should complete (videos, setup steps, or help articles). Be concise. List each as a short title and optional 1-line description. Format as: "1. Title - description" on each line. Only include what is necessary for their role, not everything.`;
-                        const text = await callGemini(prompt);
-                        outEl.innerHTML = text ? text.replace(/\n/g, '<br>') : 'Could not load recommendations. Check console.';
-                        if (text) {
-                            const lines = text.split(/\n/).filter(l => /^\d+\.\s*.+/.test(l.trim()));
-                            const items = lines.map(line => {
-                                const match = line.replace(/^\d+\.\s*/, '').match(/^(.+?)(?:\s*[-–]\s*(.+))?$/);
-                                return { title: (match && match[1]) ? match[1].trim() : line.trim(), type: 'Training', url: crm.helpUrl };
-                            });
-                            if (items.length && !db.crmCurricula[crmId]) db.crmCurricula[crmId] = { items: [] };
-                            items.forEach(it => {                             if (db.crmCurricula[crmId] && !db.crmCurricula[crmId].items.some(i => i.title === it.title)) db.crmCurricula[crmId].items.push(it); });
-                            await saveToFirebase('crmCurricula', db.crmCurricula);
+                        appState.currentView = 'settings';
+                        render();
+                    }
+                    
+                    // CRM: Build curriculum (opens guided modal)
+                    const crmBuildBtn = e.target.closest('.crm-build-curriculum-btn');
+                    if (crmBuildBtn) {
+                        e.preventDefault();
+                        const deptId = crmBuildBtn.dataset.deptId;
+                        const deptName = crmBuildBtn.dataset.deptName;
+                        appState.crmBuilderDeptId = deptId;
+                        appState.crmBuilderDeptName = deptName;
+                        appState.crmBuilderPendingItems = [...((db.crmCurricula[deptId] && db.crmCurricula[deptId].items) || [])];
+                        openCrmCurriculumBuilderModal();
+                    }
+                    
+                    // CRM: remove item from department curriculum (on CRM tab list)
+                    const crmRemoveDeptItem = e.target.closest('.crm-remove-dept-item');
+                    if (crmRemoveDeptItem) {
+                        e.preventDefault();
+                        const deptId = crmRemoveDeptItem.dataset.deptId;
+                        const index = parseInt(crmRemoveDeptItem.dataset.index, 10);
+                        if (db.crmCurricula[deptId] && db.crmCurricula[deptId].items) {
+                            db.crmCurricula[deptId].items.splice(index, 1);
+                            saveToFirebase('crmCurricula', db.crmCurricula);
                             render();
                         }
                     }
@@ -3322,6 +3394,100 @@
                     }
                 });
                 
+                // CRM curriculum builder modal: remove item from pending list
+                document.addEventListener('click', e => {
+                    const removeBtn = e.target.closest('.crm-builder-remove-item');
+                    if (removeBtn && appState.crmBuilderPendingItems) {
+                        e.preventDefault();
+                        const index = parseInt(removeBtn.dataset.index, 10);
+                        appState.crmBuilderPendingItems.splice(index, 1);
+                        updateCrmBuilderModalList();
+                    }
+                });
+                
+                // CRM curriculum builder: add custom resource
+                document.addEventListener('click', e => {
+                    if (e.target.closest('#crm-builder-add-custom')) {
+                        e.preventDefault();
+                        const titleEl = document.getElementById('crm-builder-custom-title');
+                        const urlEl = document.getElementById('crm-builder-custom-url');
+                        const title = titleEl && titleEl.value.trim();
+                        const url = urlEl && urlEl.value.trim();
+                        if (title && url) {
+                            appState.crmBuilderPendingItems = appState.crmBuilderPendingItems || [];
+                            appState.crmBuilderPendingItems.push({ title, url, type: 'Resource' });
+                            if (titleEl) titleEl.value = '';
+                            if (urlEl) urlEl.value = '';
+                            updateCrmBuilderModalList();
+                        }
+                    }
+                });
+                
+                // CRM curriculum builder: Save curriculum
+                document.addEventListener('click', e => {
+                    if (e.target.closest('#crm-builder-save')) {
+                        e.preventDefault();
+                        const deptId = appState.crmBuilderDeptId;
+                        if (!deptId) return;
+                        db.crmCurricula[deptId] = { items: [...(appState.crmBuilderPendingItems || [])] };
+                        saveToFirebase('crmCurricula', db.crmCurricula);
+                        hideModal('crm-curriculum-builder-modal');
+                        render();
+                        showNotification('Curriculum saved.', 'success');
+                    }
+                });
+                
+                // CRM curriculum builder: Get AI suggestions
+                document.addEventListener('click', async (e) => {
+                    if (!e.target.closest('#crm-builder-ai-suggest')) return;
+                    e.preventDefault();
+                    const deptId = appState.crmBuilderDeptId;
+                    const deptName = appState.crmBuilderDeptName || deptId;
+                    const platformCrmId = (db.settings && db.settings.platformCrm);
+                    const platformCrm = platformCrmId ? POPULAR_CRMS.find(c => c.id === platformCrmId) : null;
+                    const outEl = document.getElementById('crm-builder-ai-output');
+                    const listEl = document.getElementById('crm-builder-suggestions-list');
+                    if (!outEl || !listEl || !platformCrm) {
+                        if (outEl) { outEl.classList.remove('hidden'); outEl.textContent = 'Set your company CRM in Settings first.'; }
+                        return;
+                    }
+                    outEl.classList.remove('hidden');
+                    outEl.textContent = 'Finding the right trainings for ' + deptName + '...';
+                    const prompt = `You are an onboarding specialist. For the role "${deptName}" using ${platformCrm.name} CRM, list exactly 4-6 essential training topics or resources (videos, setup steps, help articles) they need—no more. Be specific and concise. Format each line as: "Title - one line description". Only what this role needs to use the CRM effectively.`;
+                    const text = await callGemini(prompt);
+                    outEl.innerHTML = text ? text.replace(/\n/g, '<br>') : 'Could not load suggestions.';
+                    const lines = (text || '').split(/\n/).filter(l => l.trim());
+                    const suggestions = lines.map(line => {
+                        const match = line.replace(/^\d+\.\s*/, '').trim().match(/^(.+?)(?:\s*[-–]\s*(.+))?$/);
+                        const title = (match && match[1]) ? match[1].trim() : line.trim();
+                        return { title, url: platformCrm.helpUrl, type: 'Training' };
+                    });
+                    listEl.innerHTML = suggestions.map((s, i) => `
+                        <div class="flex items-center justify-between p-2 bg-white border rounded text-sm">
+                            <span class="flex-1 truncate">${s.title}</span>
+                            <button type="button" class="crm-builder-add-suggestion ml-2 px-2 py-1 bg-[var(--tnt-pink)] text-white rounded text-xs" data-index="${i}">Add</button>
+                        </div>
+                    `).join('');
+                    window._crmBuilderSuggestions = suggestions;
+                });
+                
+                // CRM builder: Add suggested item to pending list
+                document.addEventListener('click', e => {
+                    const addBtn = e.target.closest('.crm-builder-add-suggestion');
+                    if (addBtn && window._crmBuilderSuggestions) {
+                        e.preventDefault();
+                        const index = parseInt(addBtn.dataset.index, 10);
+                        const item = window._crmBuilderSuggestions[index];
+                        if (item) {
+                            appState.crmBuilderPendingItems = appState.crmBuilderPendingItems || [];
+                            if (!appState.crmBuilderPendingItems.some(i => i.title === item.title)) {
+                                appState.crmBuilderPendingItems.push(item);
+                                updateCrmBuilderModalList();
+                            }
+                        }
+                    }
+                });
+                
                 // Form submissions
                 const loginForm = document.getElementById('login-form');
                 const addResourceForm = document.getElementById('add-resource-form');
@@ -3752,6 +3918,38 @@
                 hideModal('edit-member-modal');
                 render();
                 showNotification('Member updated successfully!', 'success');
+            }
+            
+            function openCrmCurriculumBuilderModal() {
+                const deptId = appState.crmBuilderDeptId;
+                const deptName = appState.crmBuilderDeptName || deptId;
+                const platformCrm = (db.settings && db.settings.platformCrm) ? POPULAR_CRMS.find(c => c.id === db.settings.platformCrm) : null;
+                const subtitle = document.getElementById('crm-builder-subtitle');
+                if (subtitle) subtitle.textContent = platformCrm 
+                    ? `Suggestions for ${deptName} using ${platformCrm.name}. Add only what this role needs—everything stays in your training platform.`
+                    : 'Set your company CRM in Settings first, then build role-based curricula here.';
+                updateCrmBuilderModalList();
+                document.getElementById('crm-builder-ai-output').classList.add('hidden');
+                document.getElementById('crm-builder-suggestions-list').innerHTML = '';
+                const customTitle = document.getElementById('crm-builder-custom-title');
+                const customUrl = document.getElementById('crm-builder-custom-url');
+                if (customTitle) customTitle.value = '';
+                if (customUrl) customUrl.value = '';
+                showModal('crm-curriculum-builder-modal');
+                lucide.createIcons();
+            }
+            
+            function updateCrmBuilderModalList() {
+                const list = document.getElementById('crm-builder-items-list');
+                if (!list) return;
+                const items = appState.crmBuilderPendingItems || [];
+                list.innerHTML = items.map((item, i) => `
+                    <li class="flex items-center justify-between p-2 bg-slate-50 rounded text-sm">
+                        <a href="${item.url}" target="_blank" rel="noopener" class="text-[var(--tnt-pink)] hover:underline truncate flex-1">${item.title}</a>
+                        <button type="button" class="crm-builder-remove-item text-slate-400 hover:text-red-600 ml-2" data-index="${i}"><span data-lucide="trash-2" class="w-4 h-4"></span></button>
+                    </li>
+                `).join('') || '<li class="text-slate-500 text-sm">No items yet. Use AI suggestions or add custom.</li>';
+                lucide.createIcons();
             }
             
             async function handleRemoveMember(memberId) {
