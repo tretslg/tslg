@@ -1069,8 +1069,25 @@
                         required: true,
                         estimatedTime: '2.5 hours'
                     }
-                }
+                },
+                // --- CRM CURRICULA (per-CRM training playlists) ---
+                crmCurricula: {}
             };
+
+            // Popular CRMs with links to their academies/help centers (for training resources)
+            const POPULAR_CRMS = [
+                { id: 'hubspot', name: 'HubSpot', academyUrl: 'https://academy.hubspot.com/', helpUrl: 'https://academy.hubspot.com/lessons/setting-up-your-crm', icon: 'layout-grid' },
+                { id: 'salesforce', name: 'Salesforce', academyUrl: 'https://trailhead.salesforce.com/', helpUrl: 'https://help.salesforce.com/', icon: 'cloud' },
+                { id: 'zoho', name: 'Zoho CRM', academyUrl: 'https://www.zoho.com/crm/help/', helpUrl: 'https://www.zoho.com/crm/help/getting-started.html', icon: 'box' },
+                { id: 'pipedrive', name: 'Pipedrive', academyUrl: 'https://support.pipedrive.com/', helpUrl: 'https://support.pipedrive.com/en/article/getting-started-with-pipedrive', icon: 'trending-up' },
+                { id: 'monday', name: 'Monday Sales CRM', academyUrl: 'https://support.monday.com/', helpUrl: 'https://support.monday.com/hc/en-us/articles/360001139483-Getting-started-with-monday-sales-CRM', icon: 'calendar' },
+                { id: 'freshsales', name: 'Freshsales', academyUrl: 'https://www.freshworks.com/support/', helpUrl: 'https://support.freshworks.com/support/solutions/folders/50000000065', icon: 'users' },
+                { id: 'copper', name: 'Copper (Google)', academyUrl: 'https://support.copper.com/', helpUrl: 'https://support.copper.com/hc/en-us/categories/360002396554-Getting-Started', icon: 'database' },
+                { id: 'insightly', name: 'Insightly', academyUrl: 'https://support.insightly.com/', helpUrl: 'https://support.insightly.com/hc/en-us/articles/360040516633-Getting-Started', icon: 'link' }
+            ];
+
+            // Gemini API for AI recommendations. For production: use a backend or restrict key in Google Cloud Console.
+            const GEMINI_API_KEY = 'AIzaSyB6H1BJKmKX6Ft2GH--MkjB4U-qGzh5qL4';
 
             // =================================================================================
             // FIREBASE DATA PERSISTENCE FUNCTIONS
@@ -1168,6 +1185,26 @@
                 return null;
             }
             
+            async function callGemini(prompt) {
+                try {
+                    const res = await fetch(`https://generativeai.googleapis.com/v1beta/models/gemini-1.5-flash:generateContent?key=${GEMINI_API_KEY}`, {
+                        method: 'POST',
+                        headers: { 'Content-Type': 'application/json' },
+                        body: JSON.stringify({
+                            contents: [{ role: 'user', parts: [{ text: prompt }] }],
+                            generationConfig: { temperature: 0.7, maxOutputTokens: 2048 }
+                        })
+                    });
+                    if (!res.ok) throw new Error(await res.text());
+                    const data = await res.json();
+                    const text = data?.candidates?.[0]?.content?.parts?.[0]?.text;
+                    return text || '';
+                } catch (err) {
+                    console.error('Gemini API error:', err);
+                    return '';
+                }
+            }
+            
             async function initializeData() {
                 try {
                     // Load data from Firebase with fallback to default data
@@ -1176,13 +1213,15 @@
                     const firebaseOnboarding = await loadFromFirebase('onboarding');
                     const firebaseCredentials = await loadFromFirebase('credentials');
                     const firebaseMediaLibrary = await loadFromFirebase('mediaLibrary');
+                    const firebaseCrmCurricula = await loadFromFirebase('crmCurricula');
                     
                     console.log('Firebase data loaded:', {
                         users: !!firebaseUsers,
                         items: !!firebaseItems,
                         onboarding: !!firebaseOnboarding,
                         credentials: !!firebaseCredentials,
-                        mediaLibrary: !!firebaseMediaLibrary
+                        mediaLibrary: !!firebaseMediaLibrary,
+                        crmCurricula: !!firebaseCrmCurricula
                     });
                     
                     // Use Firebase data if available, otherwise use default data
@@ -1191,6 +1230,7 @@
                     if (firebaseOnboarding && typeof firebaseOnboarding === 'object') db.onboarding = firebaseOnboarding;
                     if (firebaseCredentials && typeof firebaseCredentials === 'object') db.credentials = firebaseCredentials;
                     if (firebaseMediaLibrary && typeof firebaseMediaLibrary === 'object') db.mediaLibrary = firebaseMediaLibrary;
+                    if (firebaseCrmCurricula && typeof firebaseCrmCurricula === 'object') db.crmCurricula = firebaseCrmCurricula;
                     
                     // Ensure all collections exist
                     if (!db.users) db.users = {};
@@ -1198,6 +1238,7 @@
                     if (!db.onboarding) db.onboarding = {};
                     if (!db.credentials) db.credentials = {};
                     if (!db.mediaLibrary) db.mediaLibrary = {};
+                    if (!db.crmCurricula) db.crmCurricula = {};
                     
                     console.log('Data initialized from Firebase');
                     console.log('Current onboarding data:', db.onboarding);
@@ -1383,7 +1424,7 @@
                 const issues = [];
                 
                 // Check if all collections exist
-                const collections = ['users', 'items', 'onboarding', 'credentials', 'mediaLibrary'];
+                const collections = ['users', 'items', 'onboarding', 'credentials', 'mediaLibrary', 'crmCurricula'];
                 collections.forEach(collection => {
                     if (!db[collection]) {
                         issues.push(`Missing collection: ${collection}`);
@@ -1436,6 +1477,7 @@
                     await saveToFirebase('onboarding', db.onboarding);
                     await saveToFirebase('credentials', db.credentials);
                     await saveToFirebase('mediaLibrary', db.mediaLibrary);
+                    await saveToFirebase('crmCurricula', db.crmCurricula);
                     console.log('✅ Manual sync complete!');
                     alert('Data synced to Firebase successfully!');
                 } catch (error) {
@@ -1614,7 +1656,8 @@
                 searchQuery: '',
                 sortBy: '',
                 currentDepartment: null, // For reorder functionality
-                showLoginModal: false
+                showLoginModal: false,
+                selectedCrmId: null
             };
 
             // =================================================================================
@@ -1624,6 +1667,19 @@
                 renderSidebar();
                 renderMainContent();
                 lucide.createIcons();
+                if (appState.currentView === 'dashboard') setTimeout(() => loadIndustryUpdates(), 0);
+            }
+            
+            async function loadIndustryUpdates() {
+                const el = document.getElementById('industry-updates-content');
+                const btn = document.getElementById('refresh-industry-updates');
+                if (!el) return;
+                if (btn) btn.disabled = true;
+                el.innerHTML = '<p class="text-slate-500">Loading...</p>';
+                const prompt = `Briefly list 4-6 current or recent topics that matter to an Estate Planning and Elder Law practice: laws or bills that could impact the business, regulatory updates, community or bar association opportunities, and trending best practices. Use short bullet points. Be concise (1 line per item). If you don't have real-time data, suggest general areas to watch.`;
+                const text = await callGemini(prompt);
+                if (el) el.innerHTML = text ? text.split(/\n/).filter(Boolean).map(l => `<p class="text-slate-700">• ${l.replace(/^[\s\-•*]+/, '').trim()}</p>`).join('') : '<p class="text-slate-500">Updates could not be loaded. Try again later.</p>';
+                if (btn) btn.disabled = false;
             }
 
             function renderSidebar() {
@@ -1634,6 +1690,7 @@
                     { id: 'dashboard', icon: 'layout-dashboard', label: 'Dashboard' },
                     { id: 'onboarding', icon: 'graduation-cap', label: 'Onboarding' },
                     { id: 'paths', icon: 'git-merge', label: 'Learning Paths' },
+                    { id: 'crm', icon: 'layout-grid', label: 'CRM' },
                     ...departments.map(d => ({ id: `dept-${d}`, icon: getIconForDept(d), label: d }))
                 ];
                 
@@ -1733,6 +1790,9 @@
                     case 'media-library':
                         container.innerHTML = renderMediaLibrary();
                         break;
+                    case 'crm':
+                        container.innerHTML = renderCRM();
+                        break;
                     case 'curriculum':
                         container.innerHTML = renderCurriculumCreator();
                         break;
@@ -1793,6 +1853,14 @@
                                     ${createBadge('Medicaid Planning Pro', false)}
                                     ${createBadge('Trust Administration Master', false)}
                                 </div>
+                            </div>
+                            <div class="content-card">
+                                <h2 class="text-xl font-bold mb-4">Industry Updates & Trends</h2>
+                                <p class="text-sm text-slate-600 mb-3">Estate Planning, Elder Law, and impact on our practice.</p>
+                                <div id="industry-updates-content" class="text-sm text-slate-700 space-y-2 min-h-[80px]">
+                                    <p class="text-slate-500">Loading...</p>
+                                </div>
+                                <button type="button" id="refresh-industry-updates" class="mt-3 text-sm text-[var(--tnt-pink)] hover:underline">Refresh updates</button>
                             </div>
                         </div>
                     </div>
@@ -2086,6 +2154,61 @@
                         <div class="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 xl:grid-cols-6 gap-4">
                             ${mediaArray.map(createMediaCard).join('')}
                         </div>
+                    </div>
+                `;
+            }
+            
+            function renderCRM() {
+                const selectedCrmId = appState.selectedCrmId || null;
+                const selectedCrm = selectedCrmId ? POPULAR_CRMS.find(c => c.id === selectedCrmId) : null;
+                const curriculum = selectedCrmId && db.crmCurricula[selectedCrmId] ? db.crmCurricula[selectedCrmId].items || [] : [];
+                return `
+                    <div class="space-y-8">
+                        <h1 class="text-3xl font-bold">CRM Training</h1>
+                        <p class="text-slate-600">Choose a CRM to access its academy and build a curriculum. Get AI recommendations based on your role.</p>
+                        
+                        <div class="grid grid-cols-2 md:grid-cols-4 gap-4">
+                            ${POPULAR_CRMS.map(crm => `
+                                <div class="crm-card content-card cursor-pointer hover:shadow-lg transition-shadow ${selectedCrmId === crm.id ? 'ring-2 ring-[var(--tnt-pink)]' : ''}" data-crm-id="${crm.id}">
+                                    <div class="flex items-center gap-3 mb-2">
+                                        <span data-lucide="${crm.icon}" class="w-8 h-8 text-[var(--tnt-pink)]"></span>
+                                        <h3 class="font-semibold text-slate-900">${crm.name}</h3>
+                                    </div>
+                                    <a href="${crm.academyUrl}" target="_blank" rel="noopener" class="text-sm text-[var(--tnt-pink)] hover:underline" onclick="event.stopPropagation()">Open Academy →</a>
+                                </div>
+                            `).join('')}
+                        </div>
+                        
+                        ${selectedCrm ? `
+                        <div class="content-card">
+                            <h2 class="text-xl font-bold mb-4">${selectedCrm.name} Curriculum</h2>
+                            <div class="flex flex-wrap gap-3 mb-4">
+                                <a href="${selectedCrm.helpUrl}" target="_blank" rel="noopener" class="inline-flex items-center px-4 py-2 bg-slate-100 hover:bg-slate-200 rounded-lg text-sm font-medium text-slate-700">
+                                    <span data-lucide="external-link" class="w-4 h-4 mr-2"></span>
+                                    Help Center / Getting Started
+                                </a>
+                                <button type="button" id="crm-ai-recommend-btn" class="inline-flex items-center px-4 py-2 bg-[var(--tnt-pink)] hover:bg-[#d6005b] text-white rounded-lg text-sm font-medium">
+                                    <span data-lucide="sparkles" class="w-4 h-4 mr-2"></span>
+                                    Get AI recommendations for my role
+                                </button>
+                            </div>
+                            <div id="crm-ai-recommend-output" class="hidden mb-4 p-4 bg-slate-50 rounded-lg border border-slate-200 text-sm"></div>
+                            <ul id="crm-curriculum-list" class="space-y-2">
+                                ${curriculum.map((item, i) => `
+                                    <li class="flex items-center justify-between p-3 bg-slate-50 rounded-lg">
+                                        <div>
+                                            <a href="${item.url}" target="_blank" rel="noopener" class="font-medium text-[var(--tnt-pink)] hover:underline">${item.title}</a>
+                                            ${item.type ? `<span class="text-xs text-slate-500 ml-2">${item.type}</span>` : ''}
+                                        </div>
+                                        <button type="button" class="crm-remove-item text-slate-400 hover:text-red-600" data-crm-id="${selectedCrmId}" data-index="${i}">
+                                            <span data-lucide="trash-2" class="w-4 h-4"></span>
+                                        </button>
+                                    </li>
+                                `).join('')}
+                            </ul>
+                            ${curriculum.length === 0 ? '<p class="text-slate-500 py-4">No items yet. Open the Help Center or click "Get AI recommendations" to add trainings.</p>' : ''}
+                        </div>
+                        ` : '<p class="text-slate-500">Select a CRM above to build a curriculum and get AI recommendations.</p>'}
                     </div>
                 `;
             }
@@ -2697,6 +2820,62 @@
                         e.preventDefault();
                         render();
                         showNotification('Data refreshed! Check console for debug info.', 'success');
+                    }
+                    
+                    // Refresh industry updates (dashboard)
+                    const refreshIndustryBtn = e.target.closest('#refresh-industry-updates');
+                    if (refreshIndustryBtn) {
+                        e.preventDefault();
+                        loadIndustryUpdates();
+                    }
+                    
+                    // CRM card - select CRM
+                    const crmCard = e.target.closest('.crm-card');
+                    if (crmCard) {
+                        e.preventDefault();
+                        appState.selectedCrmId = crmCard.dataset.crmId;
+                        render();
+                    }
+                    
+                    // CRM remove curriculum item
+                    const crmRemoveItem = e.target.closest('.crm-remove-item');
+                    if (crmRemoveItem) {
+                        e.preventDefault();
+                        const crmId = crmRemoveItem.dataset.crmId;
+                        const index = parseInt(crmRemoveItem.dataset.index, 10);
+                        if (db.crmCurricula[crmId] && db.crmCurricula[crmId].items) {
+                            db.crmCurricula[crmId].items.splice(index, 1);
+                            saveToFirebase('crmCurricula', db.crmCurricula);
+                            render();
+                        }
+                    }
+                    
+                    // CRM AI recommend button
+                    const crmAiBtn = e.target.closest('#crm-ai-recommend-btn');
+                    if (crmAiBtn) {
+                        e.preventDefault();
+                        const crmId = appState.selectedCrmId;
+                        const crm = POPULAR_CRMS.find(c => c.id === crmId);
+                        const outEl = document.getElementById('crm-ai-recommend-output');
+                        if (!outEl || !crm) return;
+                        outEl.classList.remove('hidden');
+                        outEl.textContent = 'Getting AI recommendations for your role...';
+                        const role = appState.currentUser?.title || appState.currentUser?.role || 'Team member';
+                        const dept = appState.currentUser?.department || '';
+                        const prompt = `You are a training advisor. For a person with job title "${role}"${dept ? ` in department "${dept}"` : ''}, recommend only the 3-5 most essential and relevant ${crm.name} CRM training topics or resources they should complete (videos, setup steps, or help articles). Be concise. List each as a short title and optional 1-line description. Format as: "1. Title - description" on each line. Only include what is necessary for their role, not everything.`;
+                        const text = await callGemini(prompt);
+                        outEl.innerHTML = text ? text.replace(/\n/g, '<br>') : 'Could not load recommendations. Check console.';
+                        if (text) {
+                            const lines = text.split(/\n/).filter(l => /^\d+\.\s*.+/.test(l.trim()));
+                            const items = lines.map(line => {
+                                const match = line.replace(/^\d+\.\s*/, '').match(/^(.+?)(?:\s*[-–]\s*(.+))?$/);
+                                return { title: (match && match[1]) ? match[1].trim() : line.trim(), type: 'Training', url: crm.helpUrl };
+                            });
+                            if (items.length && !db.crmCurricula[crmId]) db.crmCurricula[crmId] = { items: [] };
+                            items.forEach(it => {                             if (db.crmCurricula[crmId] && !db.crmCurricula[crmId].items.some(i => i.title === it.title)) db.crmCurricula[crmId].items.push(it); });
+                            await saveToFirebase('crmCurricula', db.crmCurricula);
+                            render();
+                        }
                     }
                     
                     // Edit member button
