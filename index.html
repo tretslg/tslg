@@ -2728,16 +2728,7 @@
                         }
                     }
                     
-                    // Remove member button
-                    const removeMemberBtn = e.target.closest('.remove-member-btn');
-                    if (removeMemberBtn) {
-                        e.preventDefault();
-                        const memberId = removeMemberBtn.dataset.memberId;
-                        const member = db.users[memberId];
-                        if (member && confirm(`Remove "${member.name}" from the team? They will lose access to the platform. This cannot be undone.`)) {
-                            handleRemoveMember(memberId);
-                        }
-                    }
+                    // Remove member is handled by document-level listener so trash icon click is always caught
                     
                     // Onboarding management button
                     const onboardingManageBtn = e.target.closest('[title="Manage Onboarding"]');
@@ -3075,6 +3066,20 @@
                                 // Update data-index
                                 item.dataset.index = index;
                             });
+                        }
+                    }
+                });
+                
+                // Remove member (document-level so trash icon click is always caught)
+                document.addEventListener('click', async (e) => {
+                    const removeMemberBtn = e.target.closest('.remove-member-btn');
+                    if (removeMemberBtn) {
+                        e.preventDefault();
+                        e.stopPropagation();
+                        const memberId = removeMemberBtn.dataset.memberId;
+                        const member = db.users[memberId];
+                        if (member && confirm(`Remove "${member.name}" from the team? They will lose access to the platform. This cannot be undone.`)) {
+                            await handleRemoveMember(memberId);
                         }
                     }
                 });
