@@ -2527,9 +2527,9 @@
                             <button class="edit-member-btn text-slate-400 hover:text-slate-600 p-1" title="Edit Member" data-member-id="${member.id}">
                                 <span data-lucide="edit" class="w-4 h-4"></span>
                                 </button>
-                            <button class="text-slate-400 hover:text-red-600 p-1" title="Remove Member">
+                            <button type="button" class="remove-member-btn text-slate-400 hover:text-red-600 p-1" title="Remove Member" data-member-id="${member.id}">
                                 <span data-lucide="trash-2" class="w-4 h-4"></span>
-                                </button>
+                            </button>
                             </div>
                     </div>`;
             }
@@ -2725,6 +2725,17 @@
                             showModal('edit-member-modal');
                         } else {
                             console.error('Member not found:', memberId); // Debug log
+                        }
+                    }
+                    
+                    // Remove member button
+                    const removeMemberBtn = e.target.closest('.remove-member-btn');
+                    if (removeMemberBtn) {
+                        e.preventDefault();
+                        const memberId = removeMemberBtn.dataset.memberId;
+                        const member = db.users[memberId];
+                        if (member && confirm(`Remove "${member.name}" from the team? They will lose access to the platform. This cannot be undone.`)) {
+                            handleRemoveMember(memberId);
                         }
                     }
                     
@@ -3399,6 +3410,7 @@
                     avatar: 'https://i.ibb.co/2S8p5z3/avatar.png',
                     department: department,
                     role: document.getElementById('member-role').value,
+                    accessLevel: 'standard',
                     completedItems: [],
                     pinnedItems: [],
                     pathProgress: { [`onboarding_${department.toLowerCase()}`]: 0 }, // Auto-enroll in department onboarding
@@ -3506,6 +3518,39 @@
                 hideModal('edit-member-modal');
                 render();
                 showNotification('Member updated successfully!', 'success');
+            }
+            
+            async function handleRemoveMember(memberId) {
+                const member = db.users[memberId];
+                if (!member) {
+                    showNotification('Member not found!', 'error');
+                    return;
+                }
+                // Don't allow removing the currently logged-in user
+                if (appState.currentUser && appState.currentUser.id === memberId) {
+                    showNotification('You cannot remove yourself. Ask another admin to remove you.', 'error');
+                    return;
+                }
+                // Don't allow removing the last admin
+                const adminCount = Object.values(db.users).filter(u => u.role === 'admin').length;
+                if (member.role === 'admin' && adminCount <= 1) {
+                    showNotification('Cannot remove the last admin. Assign another admin first.', 'error');
+                    return;
+                }
+                const email = member.email;
+                delete db.users[memberId];
+                if (email && db.credentials[email]) {
+                    delete db.credentials[email];
+                }
+                try {
+                    await saveToFirebase('users', db.users);
+                    await saveToFirebase('credentials', db.credentials);
+                    render();
+                    showNotification(`"${member.name}" has been removed from the team.`, 'success');
+                } catch (err) {
+                    console.error('Error removing member:', err);
+                    showNotification('Failed to save changes. Please try again.', 'error');
+                }
             }
             
             async function handleAddCurriculumStep(e) {
@@ -4018,4 +4063,3 @@
     </script>
 </body>
 </html>
-
