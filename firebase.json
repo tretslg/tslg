@@ -1,0 +1,10 @@
+{
+  "hosting": {
+    "public": ".",
+    "ignore": [".cursor", ".git", "*.mdc", "firebase.json", ".firebaserc"],
+    "rewrites": [
+      { "source": "/", "destination": "/app-ui.html" },
+      { "source": "/index.html", "destination": "/app-ui.html" }
+    ]
+  }
+}
