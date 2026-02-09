@@ -1,5 +1,6 @@
 {
   "hosting": {
+    "site": "tslg-training",
     "public": ".",
     "ignore": [".cursor", ".git", "*.mdc", "firebase.json", ".firebaserc"],
     "rewrites": [

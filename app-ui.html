@@ -2468,7 +2468,7 @@
                                 <button class="bg-white/20 hover:bg-white/30 text-white p-2 rounded-full" title="Copy URL" onclick="copyMediaUrl('${media.url}')">
                                     <span data-lucide="copy" class="w-4 h-4"></span>
                                 </button>
-                                <button class="bg-red-500/80 hover:bg-red-600/80 text-white p-2 rounded-full delete-media-btn" title="Delete" data-media-id="${media.id}" data-media-title="${media.title}">
+                                <button type="button" class="delete-media-btn bg-red-500/80 hover:bg-red-600/80 text-white p-2 rounded-full" title="Delete" data-media-id="${media.id}" data-media-title="${media.title}">
                                     <span data-lucide="trash-2" class="w-4 h-4"></span>
                                 </button>
                             </div>
@@ -3084,6 +3084,29 @@
                     }
                 });
                 
+                // Delete media from library (document-level so trash icon click is always caught)
+                document.addEventListener('click', async (e) => {
+                    const deleteMediaBtn = e.target.closest('.delete-media-btn');
+                    if (deleteMediaBtn) {
+                        e.preventDefault();
+                        e.stopPropagation();
+                        const mediaId = deleteMediaBtn.dataset.mediaId;
+                        const mediaTitle = deleteMediaBtn.dataset.mediaTitle || 'this item';
+                        const media = db.mediaLibrary && db.mediaLibrary[mediaId];
+                        if (media && confirm(`Delete "${mediaTitle}" from the Media Library? This cannot be undone.`)) {
+                            delete db.mediaLibrary[mediaId];
+                            try {
+                                await saveToFirebase('mediaLibrary', db.mediaLibrary);
+                                render();
+                                showNotification(`"${mediaTitle}" removed from Media Library.`, 'success');
+                            } catch (err) {
+                                console.error('Error deleting media:', err);
+                                showNotification('Failed to save. Please try again.', 'error');
+                            }
+                        }
+                    }
+                });
+                
                 // Modal interactions
                 document.addEventListener('click', e => {
                     const closeBtn = e.target.closest('.close-modal-btn');
@@ -3477,7 +3500,7 @@
                             try {
                                 const base64Url = await fileToBase64(avatarFile);
                                 member.avatar = base64Url;
-                                showNotification('Profile picture saved (local storage)', 'info');
+                                showNotification('Profile picture saved and synced to all devices. (Storage upload failed; image stored in profile.)', 'info');
                             } catch (fallbackError) {
                                 console.error('Base64 fallback also failed:', fallbackError);
                                 showNotification('Profile picture upload failed!', 'error');
