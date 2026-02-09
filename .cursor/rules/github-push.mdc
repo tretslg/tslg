@@ -1,0 +1,28 @@
+---
+description: Commit and push changes to GitHub when the user asks
+alwaysApply: true
+---
+
+# GitHub commit and push
+
+The user wants the AI to handle pushing code to GitHub for them.
+
+## When to do it
+
+- When the user says "push to GitHub", "commit and push", "push my changes", or similar.
+- After making code changes, if the user has asked to have changes pushed going forward.
+
+## What to do
+
+1. **Find the git root**: Run `git rev-parse --show-toplevel` from the workspace (or project root). If this fails, the workspace may not be a repo; check if a parent directory is the repo or tell the user to run git init/link their repo.
+2. **Stage and commit**: From the git root, run:
+   - `git add -A` (or add only relevant files)
+   - `git status` to confirm what will be committed
+   - `git commit -m "Clear, short description of the change"`
+3. **Push**: Run `git push` (or `git push origin <branch>` if they use a specific branch). Request `network` permission so push can reach GitHub.
+
+## Notes
+
+- Use a clear, concise commit message (e.g. "Add remove member button and handler", "Fix team member add/remove").
+- If there are no changes to commit, say so and skip commit/push.
+- If push fails (auth, remote, etc.), report the error and suggest they check remote URL and credentials.
