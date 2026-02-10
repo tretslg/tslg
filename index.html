@@ -1256,10 +1256,16 @@
                             generationConfig: { temperature: 0.7, maxOutputTokens: 2048 }
                         })
                     });
-                    if (!res.ok) throw new Error(await res.text());
-                    const data = await res.json();
+                    const data = await res.json().catch(() => ({}));
+                    if (!res.ok) {
+                        const msg = data?.error?.message || res.statusText || 'Request failed';
+                        throw new Error(msg);
+                    }
                     const text = data?.candidates?.[0]?.content?.parts?.[0]?.text;
-                    return text || '';
+                    if (text && text.trim()) return text.trim();
+                    const reason = data?.candidates?.[0]?.finishReason;
+                    if (reason && reason !== 'STOP') console.warn('Gemini finishReason:', reason);
+                    return '';
                 } catch (err) {
                     console.error('Gemini API error:', err);
                     return '';
@@ -1854,7 +1860,8 @@ Search the web for:
 Reply with 5–7 short bullet points. For each bullet: mention a specific article title, report, or headline when you find one, and the source name (e.g. "NAELA: ..." or "Law360 reports ..."). If you cannot find a specific article, give the topic and suggest they search for it. Be current and specific. No intro or outro—only the bullet list.`;
                 let text = await callGeminiWithSearch(prompt);
                 if (!text || !text.trim()) {
-                    text = await callGemini(`Business context: "${businessContext}". List 5–6 current topics for their practice: recent articles/themes from NAELA, ABA, state bars, Law360, Medicaid/trust updates. One short bullet per line. No intro.`);
+                    const shortPrompt = `List 5 to 6 brief bullet points of current topics for an ${practiceLabel} practice. Include: legislative or regulatory updates, NAELA or ABA news, trust/estate or Medicaid trends, CLE opportunities, and client communication best practices. One line per bullet. No introduction.`;
+                    text = await callGemini(shortPrompt);
                 }
                 if (el) {
                     if (text && text.trim()) {
@@ -1862,7 +1869,7 @@ Reply with 5–7 short bullet points. For each bullet: mention a specific articl
                         el.innerHTML = bullets.map(l => `<p class="text-slate-700">• ${l.replace(/^[\s\-•*]+/, '').trim()}</p>`).join('');
                     } else {
                         const fallback = getIndustryUpdatesFallbackBullets();
-                        el.innerHTML = '<p class="text-slate-500 mb-2">Live updates could not be loaded. Areas to watch:</p>' + fallback.map(b => `<p class="text-slate-700">• ${b}</p>`).join('');
+                        el.innerHTML = '<p class="text-slate-600 font-medium mb-1">Key areas to watch for your practice</p>' + fallback.map(b => `<p class="text-slate-700">• ${b}</p>`).join('') + '<p class="text-xs text-slate-400 mt-3 pt-2 border-t border-slate-100">For live AI-powered headlines here, allow this site in your Gemini API key settings (Google Cloud Console → Credentials → your key → HTTP referrers: add <code class="bg-slate-100 px-1 rounded">https://tslg-training.web.app/*</code>).</p>';
                     }
                 }
                 if (btn) btn.disabled = false;
