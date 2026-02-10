@@ -1266,6 +1266,28 @@
                 }
             }
 
+            /** Call Gemini with Google Search grounding for real-time web/trends. Falls back to empty if tool not supported or quota. */
+            async function callGeminiWithSearch(prompt) {
+                try {
+                    const res = await fetch(`https://generativeai.googleapis.com/v1beta/models/gemini-1.5-flash:generateContent?key=${GEMINI_API_KEY}`, {
+                        method: 'POST',
+                        headers: { 'Content-Type': 'application/json' },
+                        body: JSON.stringify({
+                            contents: [{ role: 'user', parts: [{ text: prompt }] }],
+                            tools: [{ google_search: {} }],
+                            generationConfig: { temperature: 0.5, maxOutputTokens: 2048 }
+                        })
+                    });
+                    if (!res.ok) throw new Error(await res.text());
+                    const data = await res.json();
+                    const text = data?.candidates?.[0]?.content?.parts?.[0]?.text;
+                    return text || '';
+                } catch (err) {
+                    console.warn('Gemini with Search error (will fallback):', err);
+                    return '';
+                }
+            }
+
             function getCompanyName() {
                 return (db.settings && db.settings.companyName) ? db.settings.companyName.trim() : 'The Siegel Law Group Academy';
             }
@@ -1282,6 +1304,19 @@
                 if (!id) return 'Estate Planning and Elder Law';
                 const area = PRACTICE_AREAS.find(a => a.id === id);
                 return area ? area.name : 'Estate Planning and Elder Law';
+            }
+
+            /** Build business context from Settings for AI (updates, trends, training). Use this so AI pulls relevant content. */
+            function getBusinessContextForAI() {
+                const s = db.settings || {};
+                const parts = [];
+                if (s.companyName && s.companyName.trim()) parts.push(`Business name: ${s.companyName.trim()}`);
+                if (s.companyWebsite && s.companyWebsite.trim()) parts.push(`Website: ${s.companyWebsite.trim()}`);
+                const practiceLabel = getPracticeAreaForPrompt();
+                parts.push(`Practice area: ${practiceLabel}`);
+                if (s.servicesProducts && s.servicesProducts.trim()) parts.push(`Services/products: ${s.servicesProducts.trim()}`);
+                if (s.competitors && s.competitors.trim()) parts.push(`Competitors (for context): ${s.competitors.trim()}`);
+                return parts.length ? parts.join('. ') : `Practice area: ${practiceLabel}`;
             }
 
             function updateDocumentTitle() {
@@ -1782,16 +1817,47 @@
                 if (appState.currentView === 'dashboard') setTimeout(() => loadIndustryUpdates(), 0);
             }
             
+            function getIndustryUpdatesFallbackBullets() {
+                const practiceLabel = getPracticeAreaForPrompt();
+                return [
+                    'Legislative and regulatory changes in ' + practiceLabel.toLowerCase(),
+                    'NAELA, AARP, and state bar association updates',
+                    'Trust and estate tax law developments',
+                    'Medicaid and long-term care policy trends',
+                    'CLE and professional development opportunities',
+                    'Client communication and technology best practices'
+                ];
+            }
+
             async function loadIndustryUpdates() {
                 const el = document.getElementById('industry-updates-content');
                 const btn = document.getElementById('refresh-industry-updates');
                 if (!el) return;
                 if (btn) btn.disabled = true;
-                el.innerHTML = '<p class="text-slate-500">Loading...</p>';
+                el.innerHTML = '<p class="text-slate-500">Loading trends and industry updates...</p>';
+                const businessContext = getBusinessContextForAI();
                 const practiceLabel = getPracticeAreaForPrompt();
-                const prompt = `Briefly list 4-6 current or recent topics that matter to a ${practiceLabel} practice: laws or bills that could impact the business, regulatory updates, community or bar association opportunities, and trending best practices. Use short bullet points. Be concise (1 line per item). If you don't have real-time data, suggest general areas to watch.`;
-                const text = await callGemini(prompt);
-                if (el) el.innerHTML = text ? text.split(/\n/).filter(Boolean).map(l => `<p class="text-slate-700">• ${l.replace(/^[\s\-•*]+/, '').trim()}</p>`).join('') : '<p class="text-slate-500">Updates could not be loaded. Try again later.</p>';
+                const prompt = `You are a research assistant. Use the following business profile from the user's Settings to pull only relevant updates and trends.
+
+Business profile (use this to decide what is relevant): ${businessContext}
+
+Using current web search and trends (e.g. Google Trends, recent news), provide a short list of 5–7 bullet points that mix:
+1) What is trending right now for this type of business (search interest, popular topics in ${practiceLabel}).
+2) Recent industry updates from major outlets (NAELA, AARP, ABA, state bar associations, Law360, WealthManagement.com, etc.) that matter for their services and practice area.
+Focus only on topics that are relevant to this business. Be specific and current. Use only short bullet points, one line per item. No intro or outro. If you find real headlines or trend data, mention them; otherwise give the most relevant recent themes.`;
+                let text = await callGeminiWithSearch(prompt);
+                if (!text || !text.trim()) {
+                    text = await callGemini(`Using this business context: "${businessContext}". List 5–6 current or recent topics that matter to them: trending themes, laws or bills, regulatory updates, NAELA/ABA/state bar news, and best practices. One short bullet per line. No intro.`);
+                }
+                if (el) {
+                    if (text && text.trim()) {
+                        const bullets = text.split(/\n/).filter(l => l.trim()).slice(0, 8);
+                        el.innerHTML = bullets.map(l => `<p class="text-slate-700">• ${l.replace(/^[\s\-•*]+/, '').trim()}</p>`).join('');
+                    } else {
+                        const fallback = getIndustryUpdatesFallbackBullets();
+                        el.innerHTML = '<p class="text-slate-500 mb-2">Live updates could not be loaded. Areas to watch:</p>' + fallback.map(b => `<p class="text-slate-700">• ${b}</p>`).join('');
+                    }
+                }
                 if (btn) btn.disabled = false;
             }
 
@@ -2279,6 +2345,11 @@
                 `;
             }
             
+            function escapeAttr(s) {
+                if (s == null || s === undefined) return '';
+                return String(s).replace(/&/g, '&amp;').replace(/"/g, '&quot;').replace(/</g, '&lt;').replace(/>/g, '&gt;');
+            }
+
             function renderSettings() {
                 const s = db.settings || {};
                 const platformCrm = s.platformCrm || '';
@@ -2287,18 +2358,33 @@
                 const showIndustryUpdates = s.showIndustryUpdates !== false;
                 const specialistStyle = s.specialistStyle || 'detailed';
                 const welcomeLine = s.welcomeLine || '';
+                const companyWebsite = s.companyWebsite || '';
+                const competitors = s.competitors || '';
+                const servicesProducts = s.servicesProducts || '';
                 return `
                     <div class="space-y-8">
                         <h1 class="text-3xl font-bold">Settings</h1>
                         <p class="text-slate-600">Platform-wide options. Changes here affect the whole team and make the app more personalized.</p>
 
                         <div class="content-card max-w-xl">
-                            <h2 class="text-lg font-bold mb-4">Company identity</h2>
-                            <p class="text-sm text-slate-600 mb-3">Used in the login screen, dashboard, and browser title.</p>
-                            <label class="block text-sm font-medium text-slate-700 mb-1">Company / practice name</label>
-                            <input type="text" id="settings-company-name" value="${companyName.replace(/"/g, '&quot;')}" placeholder="e.g. The Siegel Law Group, P.A." class="w-full p-3 border border-slate-300 rounded-md focus:ring-2 focus:ring-[var(--tnt-pink)] focus:border-transparent mb-4">
+                            <h2 class="text-lg font-bold mb-4">Business info</h2>
+                            <p class="text-sm text-slate-600 mb-3">Relevant details about your business. Used to personalize the app and AI (e.g. training specialist, industry updates).</p>
+                            <label class="block text-sm font-medium text-slate-700 mb-1">Business / practice name</label>
+                            <input type="text" id="settings-company-name" value="${escapeAttr(companyName)}" placeholder="e.g. The Siegel Law Group, P.A." class="w-full p-3 border border-slate-300 rounded-md focus:ring-2 focus:ring-[var(--tnt-pink)] focus:border-transparent mb-4">
+                            <label class="block text-sm font-medium text-slate-700 mb-1">Website</label>
+                            <input type="url" id="settings-company-website" value="${escapeAttr(companyWebsite)}" placeholder="https://www.yourfirm.com" class="w-full p-3 border border-slate-300 rounded-md focus:ring-2 focus:ring-[var(--tnt-pink)] focus:border-transparent mb-4">
+                            <label class="block text-sm font-medium text-slate-700 mb-1">Competitors (optional)</label>
+                            <input type="text" id="settings-competitors" value="${escapeAttr(competitors)}" placeholder="e.g. Firm A, Firm B — or leave blank" class="w-full p-3 border border-slate-300 rounded-md focus:ring-2 focus:ring-[var(--tnt-pink)] focus:border-transparent mb-4">
+                            <label class="block text-sm font-medium text-slate-700 mb-1">Services / products</label>
+                            <textarea id="settings-services-products" rows="3" placeholder="e.g. Estate planning, trusts, Medicaid planning, probate, elder law" class="w-full p-3 border border-slate-300 rounded-md focus:ring-2 focus:ring-[var(--tnt-pink)] focus:border-transparent">${escapeAttr(servicesProducts)}</textarea>
+                            <p class="text-xs text-slate-500 mt-1">List main services or product lines. Helps tailor training and AI context.</p>
+                        </div>
+
+                        <div class="content-card max-w-xl">
+                            <h2 class="text-lg font-bold mb-4">Company identity (display)</h2>
+                            <p class="text-sm text-slate-600 mb-3">How your practice appears on the login screen and in the browser.</p>
                             <label class="block text-sm font-medium text-slate-700 mb-1">Custom welcome line (optional)</label>
-                            <input type="text" id="settings-welcome-line" value="${welcomeLine.replace(/"/g, '&quot;')}" placeholder="e.g. Your training hub for estate planning excellence" class="w-full p-3 border border-slate-300 rounded-md focus:ring-2 focus:ring-[var(--tnt-pink)] focus:border-transparent">
+                            <input type="text" id="settings-welcome-line" value="${escapeAttr(welcomeLine)}" placeholder="e.g. Your training hub for estate planning excellence" class="w-full p-3 border border-slate-300 rounded-md focus:ring-2 focus:ring-[var(--tnt-pink)] focus:border-transparent">
                         </div>
 
                         <div class="content-card max-w-xl">
@@ -3040,12 +3126,18 @@
                         db.settings = db.settings || {};
                         const companyNameEl = document.getElementById('settings-company-name');
                         const welcomeLineEl = document.getElementById('settings-welcome-line');
+                        const companyWebsiteEl = document.getElementById('settings-company-website');
+                        const competitorsEl = document.getElementById('settings-competitors');
+                        const servicesProductsEl = document.getElementById('settings-services-products');
                         const platformCrmEl = document.getElementById('settings-platform-crm');
                         const practiceAreaEl = document.getElementById('settings-practice-area');
                         const showIndustryEl = document.getElementById('settings-show-industry-updates');
                         const specialistStyleEl = document.getElementById('settings-specialist-style');
                         if (companyNameEl) db.settings.companyName = companyNameEl.value.trim() || '';
                         if (welcomeLineEl) db.settings.welcomeLine = welcomeLineEl.value.trim() || '';
+                        if (companyWebsiteEl) db.settings.companyWebsite = companyWebsiteEl.value.trim() || '';
+                        if (competitorsEl) db.settings.competitors = competitorsEl.value.trim() || '';
+                        if (servicesProductsEl) db.settings.servicesProducts = servicesProductsEl.value.trim() || '';
                         if (platformCrmEl) db.settings.platformCrm = platformCrmEl.value || null;
                         if (practiceAreaEl) db.settings.practiceArea = practiceAreaEl.value || '';
                         if (showIndustryEl) db.settings.showIndustryUpdates = showIndustryEl.checked;
@@ -3671,7 +3763,8 @@
                     if (answerEl) { answerEl.classList.add('hidden'); answerEl.textContent = ''; }
                     if (loadingEl) loadingEl.classList.remove('hidden');
                     const context = getCrmCurriculumContext();
-                    const systemPrompt = `You are an advanced training specialist. Answer the student's question using the curriculum and training resources below. If the answer is in the curriculum, use it and cite it. You may also use your knowledge of ${crmName} help center and best practices. ${styleInstruction} Be clear and helpful.\n\nCurriculum and resources:\n${context}`;
+                    const businessContext = getBusinessContextForAI();
+                    const systemPrompt = `You are an advanced training specialist. Business context (from Settings—use to tailor answers): ${businessContext}\n\nAnswer the student's question using the curriculum and training resources below. If the answer is in the curriculum, use it and cite it. You may also use your knowledge of ${crmName} help center and best practices. ${styleInstruction} Be clear and helpful.\n\nCurriculum and resources:\n${context}`;
                     const fullPrompt = systemPrompt + '\n\nStudent question: ' + question;
                     const answer = await callGemini(fullPrompt);
                     if (loadingEl) loadingEl.classList.add('hidden');
